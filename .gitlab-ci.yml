@@ -1,0 +1,18 @@
+stages:
+    - test
+    - build
+
+phpstan:
+    stage: test
+    image: registry.gitlab.mondayfactory.cz/mondayfactory/php-apps-base/php-build:v7.2.8
+    script:
+        - composer install -a --dev
+        - echo "Running phpstan"
+        - composer app:phpstan
+phpcs:
+    stage: test
+    image: registry.gitlab.mondayfactory.cz/mondayfactory/php-apps-base/php-build:v7.2.8
+    script:
+        - composer install -a --dev
+        - echo "Running phpcs"
+        - composer app:phpcs

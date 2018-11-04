@@ -1,0 +1,13 @@
+parameters:
+
+extensions:
+	console: Contributte\Console\DI\ConsoleExtension
+#
+#application:
+#	errorPresenter: Error
+#	mapping:
+#		*: App\Presenters\*Module\*Presenter
+#	scanDirs: true
+
+services:
+	- MondayFactory\DatabaseModelGenerator\Command\GenerateBasicModel

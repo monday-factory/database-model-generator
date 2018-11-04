@@ -1,0 +1,2 @@
+includes:
+	- vendor/monday-factory/php-code-checker/phpstan.neon
