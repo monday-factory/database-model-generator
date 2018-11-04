@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace MondayFactory\DatabaseModelGenerator\Command;
 
 use MondayFactory\DatabaseModel\Storage\ALowLevelRelationalDatabaseStorage;
+use MondayFactory\DatabaseModelGenerator\Generator\CollectionGenerator;
+use MondayFactory\DatabaseModelGenerator\Generator\DataGenerator;
 use MondayFactory\DatabaseModelGenerator\Generator\LowLevelDatabaseStorageGenerator;
 use Nette\Neon\Neon;
 use Nette\PhpGenerator\ClassType;
@@ -41,6 +43,7 @@ class GenerateBasicModel extends Command
 		$this->setDescription('Generates basic MondayFactory Model files from definition.');
 
 		$this->addArgument('neonName', InputArgument::REQUIRED, 'Name of the neon with definition.');
+		$this->addArgument('whatGenerate', InputArgument::OPTIONAL, '', ['all']);
 	}
 
 	/**
@@ -52,42 +55,18 @@ class GenerateBasicModel extends Command
 			$this->neonName = $input->getArgument('neonName');
 			$neon = $this->resolveNenonPath();
 			$this->definition = Neon::decode(file_get_contents($neon));
+
+			dump($this->definition);
 		} catch (\Exception $e) {
 			$output->writeln($e->getMessage());
 			return;
 		}
 
 		$lowLevelDatabaseStorage = (new LowLevelDatabaseStorageGenerator($this->definition, $this->getNeonName()))->generate();
+		$collectionGenerator = (new CollectionGenerator($this->definition, $this->getNeonName()))->generate();
+		$dataGenerator = (new DataGenerator($this->definition, $this->getNeonName()))->generate();
 
-
-//		$lowLevelDatabaseStorageNamespace = new PhpNamespace($this->getNamespace('Storage'));
-//		$lowLevelDatabaseStorageNamespace->addUse(ALowLevelRelationalDatabaseStorage::class);
-//		$lowLevelDatabaseStorageClass = $lowLevelDatabaseStorageNamespace->addClass($this->getDatabaseLowLevelStorageClassName());
-//
-//		$lowLevelDatabaseStorageClass->setExtends(ALowLevelRelationalDatabaseStorage::class);
-//
-//		$lowLevelDatabaseStorageClass->addProperty('tableName', $this->definition['databaseTableId'])
-//			->setVisibility('protected')
-//			->addComment("\n@var string");
-//
-//
-//		$lowLevelDatabaseStorageClass->addProperty('idField', $this->definition['databaseTable'])
-//			->setVisibility('protected')
-//			->addComment("\n@var string|int");
-//
-//
-//		$lowLevelDatabaseStorageClass->addProperty('rowFactoryClass', $this->getRowFactoryNamespace() . '\\' . $this->getRowFactoryClassName())
-//			->setVisibility('protected')
-//			->addComment("\n@var string");
-//
-//
-//		$lowLevelDatabaseStorageClass->addProperty('collectionFactory',  $this->getCollectionFactoryNamespace() . '\\' . $this->getCollectionFactoryClassName())
-//			->setVisibility('protected')
-//			->addComment("\n@var string");
-
-//		dump($this->getRowFactoryClassName());
-
-		echo $lowLevelDatabaseStorage;
+		echo $dataGenerator;
 
 		return;
 	}

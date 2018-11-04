@@ -2,7 +2,7 @@
 	"name": "monday-factory/database-model-generator",
 	"type": "library",
 	"description": "",
-	"keywords": ["MondayFactory", "database"],
+	"keywords": ["MondayFactory", "database", "generator"],
 	"homepage": "https://gitlab.mondayfactory.cz/mondayfactory/database-model-generator",
 	"license": ["MIT"],
 	"support": {
@@ -29,7 +29,7 @@
 		"php": "^7.2",
 		"nette/utils": "^2.4",
 		"tracy/tracy": "^2.4",
-		"nette/php-generator": "^3.0",
+		"nette/php-generator": "3.2 as 3.0",
 		"contributte/console": "^0.3.0",
 		"dibi/dibi": "^4.0"
 	},
