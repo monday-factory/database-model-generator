@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b9c280c6a620caef679a11ce23c46f23",
+    "content-hash": "4f2eeffc4facec5c50caefd8f87f3f52",
     "packages": [
         {
             "name": "contributte/console",
@@ -121,6 +121,65 @@
                 "sqlsrv"
             ],
             "time": "2018-09-17T11:50:54+00:00"
+        },
+        {
+            "name": "monday-factory/database-model",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "ssh://git@gitlab.mondayfactory.cz:2222/mondayfactory/database-model.git",
+                "reference": "d1e4418f599f1008dc53b7a97d1febf1eb0f5288"
+            },
+            "require": {
+                "dibi/dibi": "^4.0",
+                "nette/utils": "^2.4",
+                "php": "^7.2"
+            },
+            "require-dev": {
+                "monday-factory/php-code-checker": "^1.0",
+                "phpstan/phpstan": "^0.10.5",
+                "phpstan/phpstan-strict-rules": "^0.10",
+                "slevomat/coding-standard": "^4.0"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "MondayFactory\\DatabaseModel\\": "src/"
+                }
+            },
+            "scripts": {
+                "app:phpstan": [
+                    "vendor/bin/phpstan analyse src -c phpstan.neon --level 7"
+                ],
+                "app:phpcs": [
+                    "vendor/bin/phpcs --standard=vendor/monday-factory/php-code-checker/ruleset.xml --extensions=php,phpt --tab-width=4 --ignore=temp -sp src"
+                ],
+                "app:phpcbf": [
+                    "vendor/bin/phpcbf --report=diff --standard=vendor/monday-factory/php-code-checker/ruleset.xml --extensions=php,phpt --tab-width=4 --ignore=temp -p src"
+                ],
+                "app:all": [
+                    "@app:phpstan",
+                    "@app:phpcs"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Petr Besir Horáček",
+                    "homepage": "https://mondayfactory.cz"
+                }
+            ],
+            "homepage": "https://gitlab.mondayfactory.cz/mondayfactory/database-model",
+            "keywords": [
+                "MondayFactory",
+                "database"
+            ],
+            "support": {
+                "issues": "https://gitlab.mondayfactory.cz/mondayfactory/database-model/issues"
+            },
+            "time": "2018-11-02T16:09:14+00:00"
         },
         {
             "name": "nette/php-generator",
@@ -1357,7 +1416,9 @@
         }
     ],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "monday-factory/database-model": 20
+    },
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {

@@ -6,26 +6,14 @@ namespace MondayFactory\DatabaseModelGenerator\Generator;
 
 use MondayFactory\DatabaseModel\Data\IDatabaseData;
 use Nette\PhpGenerator\ClassType;
-use Nette\PhpGenerator\Factory;
-use Nette\PhpGenerator\Method;
 use Nette\PhpGenerator\PhpFile;
 use Nette\PhpGenerator\PhpLiteral;
 use Nette\PhpGenerator\PhpNamespace;
-use Nette\Utils\Strings;
-use Ramsey\Uuid\UuidInterface;
 
 class DataGenerator
 {
 
-	/**
-	 * @var array
-	 */
-	private $definition;
-
-	/**
-	 * @var string
-	 */
-	private $name;
+	use TBaseMethods;
 
 	/**
 	 * @var PhpNamespace
@@ -42,25 +30,22 @@ class DataGenerator
 	 */
 	private $file;
 
-	/**
-	 * @param array $definition
-	 * @param string $neonName
-	 */
 	public function __construct(array $definition, string $name)
 	{
 		$this->definition = $definition;
 		$this->name = $name;
-
+		$this->content = $this->generate();
 	}
 
-	public function generate()
+	private function generate(): string
 	{
 		$this->file = new PhpFile;
 		$this->file->setStrictTypes();
 
-		$this->namespace = $this->file->addNamespace("Data");
+		$this->namespace = $this->file->addNamespace($this->getNamespace("Data"));
 		$this->namespace->addUse(IDatabaseData::class);
-		$this->class = $this->namespace->addClass($this->getDatabaseLowLevelStorageClassName());
+		$this->class = $this->namespace->addClass($this->getRowFactoryClassName());
+		$this->fileNamespace = $this->namespace->getName() . '\\' . $this->class->getName();
 
 		$this->class->setImplements([IDatabaseData::class]);
 
@@ -77,6 +62,8 @@ class DataGenerator
 
 			$constructor->addParameter($this->toCamelCase($name))
 				->setTypeHint($property['type']);
+			$constructor->addComment('@var $' . $this->toCamelCase($name));
+
 			$constructor->addBody('$this->? = ?;', [$this->toCamelCase($name), new PhpLiteral('$' . $this->toCamelCase($name))]);
 
 			$this->addGetter($name, $property);
@@ -96,11 +83,13 @@ class DataGenerator
 		return (string) $this->file;
 	}
 
-	private function addFromDataMethod()
+	private function addFromDataMethod(): void
 	{
 		$fromData = $this->class->addMethod('fromData')
 			->setStatic()
-			->setReturnType(IDatabaseData::class);
+			->setReturnType(IDatabaseData::class)
+			->addComment('@var iterable $data')
+			->addComment("\n@return " . (new \ReflectionClass(IDatabaseData::class))->getShortName());
 
 		$fromData->addParameter('data')
 			->setTypeHint('iterable');
@@ -108,22 +97,26 @@ class DataGenerator
 		$rwProperties = $this->definition['databaseCols']['rw'];
 		$selfBody = '';
 
-		foreach ($rwProperties as $name => $property) {
+		foreach (array_keys($rwProperties) as $name) {
 
-			$selfBody .= "\t\$data['" . $this->toCamelCase($name) . '\']';
+			dump($name);
 
-			!next($rwProperties) === true ?: $selfBody .= ",\n";
+			$selfBody .= "\t\$data['" . $this->toCamelCase((string) $name) . '\']';
+
+			next($rwProperties) === false ?: $selfBody .= ",\n";
 		}
 
 		$fromData->addBody("return new self(\n?\n);", [new PhpLiteral($selfBody)]);
 	}
 
-	private function addFromRowMethod()
+	private function addFromRowMethod(): void
 	{
 		$fromRow = $this->class->addMethod('fromRow')
 			->setStatic()
 			->setReturnType(IDatabaseData::class)
-			->addComment('@todo Finish implementation.');
+			->addComment('@todo Finish implementation.')
+			->addComment("\n@var array \$row")
+			->addComment("\n@return " . (new \ReflectionClass(IDatabaseData::class))->getShortName());
 
 		$fromRow->addParameter('row')
 			->setTypeHint('array');
@@ -132,19 +125,19 @@ class DataGenerator
 
 		$rwProperties = $this->definition['databaseCols']['rw'];
 
-		foreach ($rwProperties as $name => $property) {
+		foreach (array_keys($rwProperties) as $name) {
 
 			$selfBody .= "\t\t\$data['" . $name . '\']';
 
-			!next($rwProperties) === true ?: $selfBody .= ",\n";
+			next($rwProperties) === false ?: $selfBody .= ",\n";
 		}
 
 		$selfBody .= "\n\t)\n)";
 
 		$roProperties = $this->definition['databaseCols']['ro'];
 
-		foreach ($roProperties as $name => $property) {
-			$selfBody .= "\n->set" . ucfirst($this->toCamelCase($name)) . '($row[\'' . $name . '\'])';
+		foreach (array_keys($roProperties) as $name) {
+			$selfBody .= "\n->set" . ucfirst($this->toCamelCase((string) $name)) . '($row[\'' . $name . '\'])';
 		}
 
 		$selfBody .= ';';
@@ -152,25 +145,27 @@ class DataGenerator
 		$fromRow->setBody($selfBody);
 	}
 
-	private function addToArrayMethod()
+	private function addToArrayMethod(): void
 	{
-		$toArray = $this->class->addMethod('toArray')
+		$this->class->addMethod('toArray')
 			->setReturnType('array')
-			->setBody('return get_object_vars($this);');
+			->setBody('return get_object_vars($this);')
+			->addComment('@return array');
 	}
 
-	private function addToDatabaseArrayMethod()
+	private function addToDatabaseArrayMethod(): void
 	{
 		$toArray = $this->class->addMethod('toDatabaseArray')
 			->setReturnType('array')
-			->addComment('@todo Finish implementation.');
+			->addComment('@todo Finish implementation.')
+			->addComment("\n@return array");
 
 		$body = "return [\n";
 
 		$rwProperties = $this->definition['databaseCols']['rw'];
 
-		foreach ($rwProperties as $name => $property) {
-			$body .= "\t" . '\'' . $name . '\' => $this->' . $this->toCamelCase($name) . ",\n";
+		foreach (array_keys($rwProperties) as $name) {
+			$body .= "\t" . '\'' . $name . '\' => $this->' . $this->toCamelCase((string) $name) . ",\n";
 		}
 
 		$body .= '];';
@@ -178,83 +173,44 @@ class DataGenerator
 		$toArray->setBody($body);
 	}
 
-	private function addGetter(string $name, array $propertyDefinition)
+	private function addGetter(string $name, array $propertyDefinition): void
 	{
-		$this->class->addMethod('get' . ucfirst($this->toCamelCase($name)))
+		$getter = $this->class->addMethod('get' . ucfirst($this->toCamelCase($name)))
 			->setReturnType($propertyDefinition['type'])
 			->addBody('return $this->?;', [$this->toCamelCase($name)]);
+
+		$getter->addComment('@return ' . $this->getTypehint($propertyDefinition['type']));
 	}
 
-	private function addSetter(string $name, array $propertyDefinition)
+	private function addSetter(string $name, array $propertyDefinition): void
 	{
-		$this->class->addMethod('set' . ucfirst($this->toCamelCase($name)))
+		$setter = $this->class->addMethod('set' . ucfirst($this->toCamelCase($name)))
 			->addBody("\$this->? = $?;\n", [$this->toCamelCase($name), $this->toCamelCase($name)])
-			->addBody('return $this;')
-			->addParameter($name)
+			->addBody('return $this;');
+
+		$setter->addParameter($this->toCamelCase($name))
 			->setTypeHint($propertyDefinition['type']);
+
+		$setter->addComment('@var ' . $this->getTypehint($propertyDefinition['type']));
 	}
 
-	private function addProperty(string $name, array $propertyDefinition)
+	private function addProperty(string $name, array $propertyDefinition): void
 	{
-		if (substr($propertyDefinition['type'], 0, 1) === '\\') {
-			$classReflection = new \ReflectionClass($propertyDefinition['type']);
+		$this->class->addProperty($this->toCamelCase($name))
+			->setVisibility('private')
+			->addComment("\n@var " . $this->getTypehint($propertyDefinition['type']));
+	}
 
+	private function getTypehint(string $type): string
+	{
+		if (substr_count($type, '\\') > 0) {
+			$classReflection = new \ReflectionClass($type);
 			$this->namespace->addUse($classReflection->getName());
 
-			$this->class->addProperty($this->toCamelCase($name))
-				->setVisibility('private')
-				->addComment("\n@var " . $classReflection->getName());
-		} else {
-			$this->class->addProperty($this->toCamelCase($name))
-				->setVisibility('private')
-				->addComment("\n@var " . $propertyDefinition['type']);
+			return $classReflection->getShortName();
 		}
-	}
 
-
-	private function getClassName()
-	{
-		return ucfirst($this->name);
-	}
-
-	private function getNamespace(string $concreteNamespace)
-	{
-		return $this->definition['namespace'] . '\\' . $concreteNamespace;
-	}
-
-	private function getRowFactoryNamespace()
-	{
-		return $this->getNamespace('Data');
-	}
-
-	private function getRowFactoryClassName()
-	{
-		return $this->getClassName() . 'Data';
-	}
-
-	private function getCollectionFactoryNamespace()
-	{
-		return $this->getNamespace('Collection');
-	}
-
-	private function getCollectionFactoryClassName()
-	{
-		return $this->getClassName() . 'Collection';
-	}
-
-	private function getDatabaseLowLevelStorageNamespace()
-	{
-		return $this->getNamespace('Storage');
-	}
-
-	private function getDatabaseLowLevelStorageClassName()
-	{
-		return $this->getClassName() . 'DatabaseLowLevelStorage';
-	}
-
-	private function toCamelCase($string)
-	{
-		return preg_replace('/[-\_]/', '', Strings::firstLower(Strings::capitalize($string)));
+		return $type;
 	}
 
 }

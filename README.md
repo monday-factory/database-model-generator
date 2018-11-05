@@ -1,58 +1,79 @@
-## Dependency tree
+## Install
 
-```
-	- Collection\IDatabaseDataCollection
-	| └ Collection\BaseDatabaseDataCollection
-	|
-	- Data\IDatabaseData
-	|
-	- Storage\ILowLevelRelationalDatabaseStorage
-	  └ Storage\ALowLevelRelationalDatabaseStorage
-	- Storage\IRelationalDatabaseStorage
-```
-
-## Concept hierarchy
-
-```
-                                Presenter
-                                    |
-                                 Mediator
-                                /        \
-                  MiddleLevelApi          SomeClient/Api
-                       /
-                 LowLevelApi
-```
-
-## Basic usage
-
-### Composer
+Add to composer.json
 
 ```json
-{
-	"type": "project",
-	"autoload": {
-		"psr-4": {
-			"App\\": "app/"
-		}
-	},
-	"repositories": {
-		"database-model": {
+"repositories": {
+		"database-model-generator": {
 			"type": "vcs",
-			"url": "ssh://git@gitlab.mondayfactory.cz:2222/mondayfactory/database-model.git"
+			"url": "ssh://git@gitlab.mondayfactory.cz:2222/mondayfactory/database-model-generator.git"
 		}
-	},
-	"require": {
-		"monday-factory/database-model": "dev-master"
+	}
+```
+
+Install it & enjoy ;-)
+
+`composer require-dev --dev monday-factory/database-model-generator`
+
+Now you must write a simple neon recipe located lives in `modelDefinition` directory.
+
+### Recipe
+
+`/data/modelDefinition/rancherService.neon`
+
+```yaml
+namespace: T2p\Common\Rancher\Service
+databaseTable: token_rancher_service_status
+databaseTableId:
+databaseCols:
+	rw:
+		token_uuid:
+			type: \Ramsey\Uuid\UuidInterface
+		type:
+			type: string
+		status:
+			type: \T2p\Common\Rancher\Service\StatusEnum
+	ro:
+		created:
+			type: \DateTime
+		updated:
+			type: \DateTime
+```
+
+Now you call the generator command.
+
+`php vendor/monday-factory/database-model-generator/src/bin/generator d:g:b rancherService -f app`
+
+### Result
+
+#### Collection
+```php
+<?php
+
+declare(strict_types=1);
+
+namespace T2p\Common\Rancher\Service\Collection;
+
+use MondayFactory\DatabaseModel\Colection\BaseDatabaseDataCollection;
+use MondayFactory\DatabaseModel\Colection\IDatabaseDataCollection;
+use T2p\Common\Rancher\Service\Data\RancherServiceData;
+
+class RancherServiceCollection extends BaseDatabaseDataCollection
+{
+	/**
+	 * @param array $data
+	 *
+	 * @return IDatabaseDataCollection
+	 */
+	public static function create(iterable $data): IDatabaseDataCollection
+	{
+		return new static($data, RancherServiceData::class);
 	}
 }
 
 ```
 
-
-### Data class
-
-This Data class have two properties. $tokenUuid passed by user via constructor and $updated when can be passed only in $data via method fromRow. From row is factory used by Storage\ALowLevelRelationalDatabaseStorage in data fetching process.
-
+#### Data object
 ```php
 <?php
 
@@ -60,76 +81,110 @@ declare(strict_types=1);
 
 namespace T2p\Common\Rancher\Service\Data;
 
-use Dibi\Row;
-use Ramsey\Uuid\Uuid;
+use DateTime;
+use MondayFactory\DatabaseModel\Data\IDatabaseData;
 use Ramsey\Uuid\UuidInterface;
-use T2p\Common\AbstractModel\Data\IDatabaseData;
 use T2p\Common\Rancher\Service\StatusEnum;
 
-class StatusData implements IDatabaseData
+class RancherServiceData implements IDatabaseData
 {
-
 	/**
 	 * @var UuidInterface
 	 */
 	private $tokenUuid;
 
 	/**
-	 * @var \DateTime
+	 * @var string
+	 */
+	private $type;
+
+	/**
+	 * @var StatusEnum
+	 */
+	private $status;
+
+	/**
+	 * @var DateTime
+	 */
+	private $created;
+
+	/**
+	 * @var DateTime
 	 */
 	private $updated;
 
-	/**
-	 * @param UuidInterface $tokenUuid
-	 */
-	public function __construct(UuidInterface $tokenUuid)
-	{
-		$this->tokenUuid = $tokenUuid;
-	}
 
 	/**
-	 * @param iterable $data [<br>
-	 * 		UuidInterface tokenUuid,<br>
-	 * ]
+	 * @var $tokenUuid
+	 * @var $type
+	 * @var $status
+	 */
+	public function __construct(UuidInterface $tokenUuid, string $type, StatusEnum $status)
+	{
+		$this->tokenUuid = $tokenUuid;
+		$this->type = $type;
+		$this->status = $status;
+	}
+
+
+	/**
+	 * @var iterable $data
 	 *
 	 * @return IDatabaseData
 	 */
 	public static function fromData(iterable $data): IDatabaseData
 	{
 		return new self(
-			$data['tokenUuid']
+			$data['tokenUuid'],
+			$data['type'],
+			$data['status']
 		);
 	}
 
+
 	/**
-	 * @param Row $row
+	 * @todo Finish implementation.
 	 *
-	 * @return $this
-	 * @throws \Exception
+	 * @var array $row
+	 *
+	 * @return IDatabaseData
 	 */
-	public static function fromRow(iterable $row): IDatabaseData
+	public static function fromRow(array $row): IDatabaseData
 	{
 		return (new self(
-					Uuid::fromString($row['token_uuid'])
-				)
+				$data['token_uuid'],
+				$data['type'],
+				$data['status']
 			)
-			->setUpdated($row['updated']);
+		)
+		->setCreated($row['created'])
+		->setUpdated($row['updated']);
 	}
 
+
+	/**
+	 * @return array
+	 */
 	public function toArray(): array
 	{
 		return get_object_vars($this);
 	}
 
+
 	/**
+	 * @todo Finish implementation.
+	 *
 	 * @return array
 	 */
 	public function toDatabaseArray(): array
 	{
 		return [
-			'tokenUuid' => $this->tokenUuid->toString(),
+			'token_uuid' => $this->tokenUuid,
+			'type' => $this->type,
+			'status' => $this->status,
 		];
 	}
+
 
 	/**
 	 * @return UuidInterface
@@ -139,68 +194,79 @@ class StatusData implements IDatabaseData
 		return $this->tokenUuid;
 	}
 
+
 	/**
-	 * @return \DateTimeImmutable
+	 * @return string
 	 */
-	public function getUpdated(): \DateTimeImmutable
+	public function getType(): string
+	{
+		return $this->type;
+	}
+
+
+	/**
+	 * @return StatusEnum
+	 */
+	public function getStatus(): StatusEnum
+	{
+		return $this->status;
+	}
+
+
+	/**
+	 * @return DateTime
+	 */
+	public function getCreated(): DateTime
+	{
+		return $this->created;
+	}
+
+
+	/**
+	 * @return DateTime
+	 */
+	public function getUpdated(): DateTime
 	{
 		return $this->updated;
 	}
 
+
 	/**
-	 * @var \DateTimeImmutable $updated
+	 * @var UuidInterface
 	 */
-	private function setUpdated(\DateTimeImmutable $updated)
+	public function setTokenUuid(UuidInterface $tokenUuid)
 	{
-		$this->updated = $updated;
+		$this->tokenUuid = $tokenUuid;
+
 		return $this;
 	}
 
-}
 
-```
-
-### Collection factory
-
-For collection is needed implement only one method ::create(). This factory is interaly called by Storage\ALowLevelRelationalDatabaseStorage in data fetching process.
-
-```php
-<?php
-
-declare(strict_types=1);
-
-namespace T2p\Common\Rancher\Service\Collection;
-
-use T2p\Common\AbstractModel\Colection\BaseDatabaseDataCollection;
-use T2p\Common\AbstractModel\Colection\IDatabaseDataCollection;
-use T2p\Common\Rancher\Service\Data\StatusData;
-
-class StatusCollection extends BaseDatabaseDataCollection
-{
 	/**
-	 * @param array $data
-	 *
-	 * @return StatusCollection
+	 * @var string
 	 */
-	public static function create(array $data, ?string $idField = null): IDatabaseDataCollection
+	public function setType(string $type)
 	{
-		return new static($data, StatusData::class, $idField);
+		$this->type = $type;
+
+		return $this;
+	}
+
+
+	/**
+	 * @var StatusEnum
+	 */
+	public function setStatus(StatusEnum $status)
+	{
+		$this->status = $status;
+
+		return $this;
 	}
 }
 
 ```
 
-### LowLevelDatabaseStorage instance
-
-This instance You use in High level Storage for communication with database. You must implement three arguments: 
- - `$tableName` // Database table name. 
- - `$rowFactoryClass` // `StatusData` defined above.
- - `$collectionFactory` // `StatusCollection` defined above.
- 
- and optional
- 
- - `$idField` // Value of this database field is used as key in `Collection\IDatabaseDataCollection` if is set, otherwise is array indexed from zero. If is not `$idField` value of result set unique will be thrown `UnexpectedValueException`.
-
+#### Low level database storage
 ```php
 <?php
 
@@ -208,11 +274,11 @@ declare(strict_types=1);
 
 namespace T2p\Common\Rancher\Service\Storage;
 
-use T2p\Common\AbstractModel\Storage\ALowLevelRelationalDatabaseStorage;
-use T2p\Common\Rancher\Service\Collection\StatusCollection;
-use T2p\Common\Rancher\Service\Data\StatusData;
+use MondayFactory\DatabaseModel\Storage\ALowLevelRelationalDatabaseStorage;
+use T2p\Common\Rancher\Service\Collection\RancherServiceCollection;
+use T2p\Common\Rancher\Service\Data\RancherServiceData;
 
-class StatusDatabaseLowLevelStorage extends ALowLevelRelationalDatabaseStorage
+class RancherServiceDatabaseLowLevelStorage extends ALowLevelRelationalDatabaseStorage
 {
 	/**
 	 * @var string
@@ -220,123 +286,20 @@ class StatusDatabaseLowLevelStorage extends ALowLevelRelationalDatabaseStorage
 	protected $tableName = 'token_rancher_service_status';
 
 	/**
-	 * @var string
-	 */
-	protected $rowFactoryClass = StatusData::class;
-
-	/**
-	 * @var string
-	 */
-	protected $collectionFactory = StatusCollection::class;
-
-	/**
-	 * @var scalar
+	 * @var string|int
 	 */
 	protected $idField;
 
+	/**
+	 * @var string
+	 */
+	protected $rowFactoryClass = RancherServiceData::class;
+
+	/**
+	 * @var string
+	 */
+	protected $collectionFactory = RancherServiceCollection::class;
 }
 
 ```
 
-### DatabaseStorage
-
-DatabaseStorage is MiddleLevel database storage. In this class are impelemented methods e.g. `public function getShouldActiveContainersByType(string $containerType)`
-
-```php
-<?php
-
-declare(strict_types=1);
-
-namespace T2p\Common\Rancher\Service\Storage;
-
-use MondayFactory\DatabaseModel\Colection\IDatabaseDataCollection;
-use MondayFactory\DatabaseModel\Storage\IRelationalDatabaseStorage;
-use MondayFactory\DatabaseModel\Storage\IStorage;
-
-class StatusDatabaseStorage implements IRelationalDatabaseStorage
-{
-	/**
-	 * @var StatusDatabaseLowLevelStorage
-	 */
-	private $storage;
-
-	/**
-	 * @param StatusDatabaseLowLevelStorage $lowLevelStorage
-	 */
-	public function __construct(StatusDatabaseLowLevelStorage $storage)
-	{
-		$this->storage = $storage;
-	}
-
-	/**
-	 * @return IDatabaseDataCollection
-	 */
-	public function getActiveServices(): IDatabaseDataCollection
-	{
-		return $this->storage->findByCriteria([
-				'status = "new"',
-			]
-		);
-	}
-
-}
-
-```
-
-### Mediator
-
-Mediator is high level api (Facade). Mediator uses e.g. `Rancher\Client` and `StatusDatabaseStorage` and provide functions for manage operations depened on both apis.
-
-```php
-<?php
-
-declare(strict_types=1);
-
-namespace T2p\Common\Rancher\Service;
-
-use T2p\Common\Rancher\Service\Storage\StatusDatabaseStorage;
-use Tyldar\Rancher\Client;
-
-class Mediator
-{
-
-	/**
-	 * @var Client
-	 */
-	private $rancherClient;
-
-	/**
-	 * @var StatusDatabaseStorage
-	 */
-	private $databaseStorage;
-
-	/**
-	 * @param Client $rancher
-	 * @param StatusDatabaseStorage $databaseStorage
-	 */
-	public function __construct(Client $rancher, StatusDatabaseStorage $databaseStorage)
-	{
-		$this->databaseStorage = $databaseStorage;
-		$this->rancherClient = $rancher;
-
-	}
-
-	public function createRecreateMessagesForIllContainers()
-	{
-		$shouldBeActiveContainers = $this->databaseStorage->getActiveServices();
-		$containersStatuses = $this->rancherClient->getAllContainers();
-
-		// compare, create messages etc.
-	}
-
-}
-```
-
-### config.neon
-
-```yaml
-services:
-	- T2p\Common\Rancher\Service\Storage\StatusDatabaseLowLevelStorage
-	- T2p\Common\Rancher\Service\Storage\StatusDatabaseStorage
-	- T2p\Common\Rancher\Service\Mediator
-```

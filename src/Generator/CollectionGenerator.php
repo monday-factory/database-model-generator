@@ -6,42 +6,34 @@ namespace MondayFactory\DatabaseModelGenerator\Generator;
 
 use MondayFactory\DatabaseModel\Colection\BaseDatabaseDataCollection;
 use MondayFactory\DatabaseModel\Colection\IDatabaseDataCollection;
+use Nette\PhpGenerator\PhpFile;
 use Nette\PhpGenerator\PhpLiteral;
-use Nette\PhpGenerator\PhpNamespace;
 
 class CollectionGenerator
 {
 
-	/**
-	 * @var array
-	 */
-	private $definition;
+	use TBaseMethods;
 
-	/**
-	 * @var string
-	 */
-	private $name;
-
-	/**
-	 * @param array $definition
-	 * @param string $neonName
-	 */
 	public function __construct(array $definition, string $name)
 	{
 		$this->definition = $definition;
 		$this->name = $name;
-
+		$this->content = $this->generate();
 	}
 
-	public function generate()
+	private function generate(): string
 	{
-		$namespace = new PhpNamespace($this->getNamespace('Storage'));
+		$file = new PhpFile();
+		$file->setStrictTypes();
 
-		$namespace->addUse(BaseDatabaseDataCollection::class)
+		$namespace = $file->addNamespace($this->getNamespace('Collection'));
+		$namespace
+			->addUse(BaseDatabaseDataCollection::class)
 			->addUse(IDatabaseDataCollection::class)
 			->addUse($this->getRowFactoryNamespace() . '\\' . $this->getRowFactoryClassName());
 
 		$class = $namespace->addClass($this->getCollectionFactoryClassName());
+		$this->fileNamespace = $namespace->getName() . '\\' . $class->getName();
 
 		$class->setExtends(BaseDatabaseDataCollection::class);
 
@@ -51,49 +43,11 @@ class CollectionGenerator
 			->setStatic()
 			->setReturnType(IDatabaseDataCollection::class)
 			->addComment("@param array \$data\n")
-			->addComment('@return ' . new PhpLiteral(IDatabaseDataCollection::class));
+			->addComment('@return ' . (new \ReflectionClass(IDatabaseDataCollection::class))->getShortName())
+			->addParameter('data')
+			->setTypeHint('iterable');
 
-		return (string) $namespace;
-	}
-
-	private function getClassName()
-	{
-		return ucfirst($this->name);
-	}
-
-	private function getNamespace(string $concreteNamespace)
-	{
-		return $this->definition['namespace'] . '\\' . $concreteNamespace;
-	}
-
-	private function getRowFactoryNamespace()
-	{
-		return $this->getNamespace('Data');
-	}
-
-	private function getRowFactoryClassName()
-	{
-		return $this->getClassName() . 'Data';
-	}
-
-	private function getCollectionFactoryNamespace()
-	{
-		return $this->getNamespace('Collection');
-	}
-
-	private function getCollectionFactoryClassName()
-	{
-		return $this->getClassName() . 'Collection';
-	}
-
-	private function getDatabaseLowLevelStorageNamespace()
-	{
-		return $this->getNamespace('Storage');
-	}
-
-	private function getDatabaseLowLevelStorageClassName()
-	{
-		return $this->getClassName() . 'DatabaseLowLevelStorage';
+		return (string) $file;
 	}
 
 }

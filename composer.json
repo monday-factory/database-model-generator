@@ -23,6 +23,10 @@
 		"code-checker": {
 			"type": "vcs",
 			"url": "ssh://git@gitlab.mondayfactory.cz:2222/mondayfactory/php-code-checker.git"
+		},
+		"database-model": {
+			"type": "vcs",
+			"url": "ssh://git@gitlab.mondayfactory.cz:2222/mondayfactory/database-model.git"
 		}
 	},
 	"require": {
@@ -31,7 +35,8 @@
 		"tracy/tracy": "^2.4",
 		"nette/php-generator": "3.2 as 3.0",
 		"contributte/console": "^0.3.0",
-		"dibi/dibi": "^4.0"
+		"dibi/dibi": "^4.0",
+		"monday-factory/database-model": "dev-master"
 	},
 	"require-dev": {
 		"phpstan/phpstan": "^0.10.5",
