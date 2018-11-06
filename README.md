@@ -29,15 +29,21 @@ databaseCols:
 	rw:
 		token_uuid:
 			type: \Ramsey\Uuid\UuidInterface
+			toString: 'toString()'
+			fromString: '\Ramsey\Uuid\Uuid::fromString(?)'
 		type:
 			type: string
 		status:
 			type: \T2p\Common\Rancher\Service\StatusEnum
+			fromString: '\T2p\Common\Rancher\Service\StatusEnum::get(?)'
+			toString: 'getValue()'
 	ro:
 		created:
 			type: \DateTime
+			fromString: '\DateTime(?)'
 		updated:
 			type: \DateTime
+			fromString: '\DateTime(?)'
 ```
 
 Now you call the generator command.

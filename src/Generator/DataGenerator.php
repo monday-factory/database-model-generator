@@ -71,14 +71,13 @@ class DataGenerator
 
 		foreach ($this->definition['databaseCols']['ro'] as $name => $property) {
 			$this->addProperty($name, $property);
+			$this->addSetter($name, $property);
 			$this->addGetter($name, $property);
 		}
 
 		foreach ($this->definition['databaseCols']['rw'] as $name => $property) {
-			$this->addSetter($name, $property);
+			$this->addGetter($name, $property);
 		}
-
-			dump($this->namespace->getUses());
 
 		return (string) $this->file;
 	}
@@ -121,28 +120,63 @@ class DataGenerator
 		$fromRow->addParameter('row')
 			->setTypeHint('array');
 
-		$selfBody = "return (new self(\n";
+		$fromRow->addBody("return (new self(");
 
 		$rwProperties = $this->definition['databaseCols']['rw'];
 
-		foreach (array_keys($rwProperties) as $name) {
+		foreach ($rwProperties as $name => $property) {
+			$delimiter = next($rwProperties) === false
+				? ""
+				: ",";
 
-			$selfBody .= "\t\t\$data['" . $name . '\']';
-
-			next($rwProperties) === false ?: $selfBody .= ",\n";
+			if (isset($property['fromString'])) {
+				$fromRow->addBody(
+					"\t\t"
+					. str_replace('?', '$row[\'' . $name . '\']', $this->prepareFromStringArgument($property['fromString']))
+					. $delimiter
+				);
+			} else {
+				$fromRow->addBody("\t\t\$row['" . $name . '\']' . $delimiter);
+			}
 		}
 
-		$selfBody .= "\n\t)\n)";
-
+		$fromRow->addBody("\t)\n)");
 		$roProperties = $this->definition['databaseCols']['ro'];
 
-		foreach (array_keys($roProperties) as $name) {
-			$selfBody .= "\n->set" . ucfirst($this->toCamelCase((string) $name)) . '($row[\'' . $name . '\'])';
+		foreach ($roProperties as $name => $property) {
+			$delimiter = next($roProperties) !== false
+				? ""
+				: ";";
+
+			$pastedProperty = isset($property['fromString'])
+				? str_replace('?', '$row[\'' . $name . '\']', $this->prepareFromStringArgument($property['fromString']))
+				: '$row[\'' . $name . '\']';
+
+			$fromRow->addBody("->set" . ucfirst($this->toCamelCase((string) $name)) . "({$pastedProperty})" . $delimiter);
+		}
+	}
+
+	private function prepareFromStringArgument(string $parameter): string
+	{
+		$expandedFromString = explode('::', $parameter);
+
+		if ($expandedFromString != false && count($expandedFromString) === 2) {
+			$this->namespace->addUse($expandedFromString[0]);
+			$classReflection = new \ReflectionClass($expandedFromString[0]);
+
+			return $classReflection->getShortName() . '::' . $expandedFromString[1];
 		}
 
-		$selfBody .= ';';
+		if (substr($parameter, 0, 1) === '\\') {
+			$className = str_replace('(?)', '', $parameter);
 
-		$fromRow->setBody($selfBody);
+			/**
+			 * Check if the class exists
+			 */
+			new \ReflectionClass($className);
+
+			return 'new ' . $parameter;
+		}
 	}
 
 	private function addToArrayMethod(): void
@@ -164,13 +198,22 @@ class DataGenerator
 
 		$rwProperties = $this->definition['databaseCols']['rw'];
 
-		foreach (array_keys($rwProperties) as $name) {
-			$body .= "\t" . '\'' . $name . '\' => $this->' . $this->toCamelCase((string) $name) . ",\n";
+		foreach ($rwProperties as $name => $property) {
+			$toString = isset($property['toString'])
+				? $this->prepareToStringArgument($property['toString'])
+				: '';
+
+			$body .= "\t" . '\'' . $name . '\' => $this->' . $this->toCamelCase((string) $name)  . $toString .  ",\n";
 		}
 
 		$body .= '];';
 
 		$toArray->setBody($body);
+	}
+
+	private function prepareToStringArgument(string $argument): string
+	{
+		return '->' . str_replace('->', '', $argument);
 	}
 
 	private function addGetter(string $name, array $propertyDefinition): void
