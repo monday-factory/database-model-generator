@@ -89,6 +89,7 @@ namespace T2p\Common\Rancher\Service\Data;
 
 use DateTime;
 use MondayFactory\DatabaseModel\Data\IDatabaseData;
+use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 use T2p\Common\Rancher\Service\StatusEnum;
 
@@ -158,13 +159,13 @@ class RancherServiceData implements IDatabaseData
 	public static function fromRow(array $row): IDatabaseData
 	{
 		return (new self(
-				$data['token_uuid'],
-				$data['type'],
-				$data['status']
+				Uuid::fromString($row['token_uuid']),
+				$row['type'],
+				StatusEnum::get($row['status'])
 			)
 		)
-		->setCreated($row['created'])
-		->setUpdated($row['updated']);
+		->setCreated(new \DateTime($row['created']))
+		->setUpdated(new \DateTime($row['updated']));
 	}
 
 
@@ -185,9 +186,9 @@ class RancherServiceData implements IDatabaseData
 	public function toDatabaseArray(): array
 	{
 		return [
-			'token_uuid' => $this->tokenUuid,
+			'token_uuid' => $this->tokenUuid->toString(),
 			'type' => $this->type,
-			'status' => $this->status,
+			'status' => $this->status->getValue(),
 		];
 	}
 
@@ -220,6 +221,17 @@ class RancherServiceData implements IDatabaseData
 
 
 	/**
+	 * @var DateTime
+	 */
+	public function setCreated(DateTime $created)
+	{
+		$this->created = $created;
+
+		return $this;
+	}
+
+
+	/**
 	 * @return DateTime
 	 */
 	public function getCreated(): DateTime
@@ -229,44 +241,22 @@ class RancherServiceData implements IDatabaseData
 
 
 	/**
+	 * @var DateTime
+	 */
+	public function setUpdated(DateTime $updated)
+	{
+		$this->updated = $updated;
+
+		return $this;
+	}
+
+
+	/**
 	 * @return DateTime
 	 */
 	public function getUpdated(): DateTime
 	{
 		return $this->updated;
-	}
-
-
-	/**
-	 * @var UuidInterface
-	 */
-	public function setTokenUuid(UuidInterface $tokenUuid)
-	{
-		$this->tokenUuid = $tokenUuid;
-
-		return $this;
-	}
-
-
-	/**
-	 * @var string
-	 */
-	public function setType(string $type)
-	{
-		$this->type = $type;
-
-		return $this;
-	}
-
-
-	/**
-	 * @var StatusEnum
-	 */
-	public function setStatus(StatusEnum $status)
-	{
-		$this->status = $status;
-
-		return $this;
 	}
 }
 
