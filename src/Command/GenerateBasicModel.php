@@ -56,6 +56,11 @@ class GenerateBasicModel extends Command
 	 */
 	private $projectFilesPath;
 
+	/**
+	 * @var InputInterface
+	 */
+	private $input;
+
 
 	public function __construct()
 	{
@@ -78,6 +83,7 @@ class GenerateBasicModel extends Command
 			'What You need to generate? You can add more types as list separated by space. 
 				For all leave argument blank. Allowed values: 
 				[' . join(', ', $this->generators) . ']' , ['collection', 'data', 'llstorage']);
+		$this->addOption('definition-directory', 'd', InputOption::VALUE_OPTIONAL);
 		$this->addOption('only-print', 'p', InputOption::VALUE_NONE);
 		$this->addOption('force', 'f', InputOption::VALUE_NONE);
 	}
@@ -87,6 +93,8 @@ class GenerateBasicModel extends Command
 	 */
 	protected function execute(InputInterface $input, OutputInterface $output): void
 	{
+		$this->input = $input;
+
 		if (is_string($input->getArgument('projectFilesPath'))) {
 			$this->projectFilesPath = $input->getArgument('projectFilesPath');
 		} else {
@@ -225,7 +233,14 @@ class GenerateBasicModel extends Command
 
 	private function resolveNenonPath(): string
 	{
-		$filePath = realpath(__DIR__. '/../../../../../modelDefinition/' . $this->getNeonName() . '.neon');
+		$path = __DIR__ . '/../../../../../modelDefinition/';
+		$pathOption = is_string($this->input->getOption('definition-directory'));
+
+		if (is_string($pathOption)) {
+			$path = $pathOption;
+		}
+
+		$filePath = realpath($path . $this->getNeonName() . '.neon');
 
 		if ($filePath !== false && file_exists($filePath))
 		{
