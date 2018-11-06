@@ -83,7 +83,8 @@ class GenerateBasicModel extends Command
 			'What You need to generate? You can add more types as list separated by space. 
 				For all leave argument blank. Allowed values: 
 				[' . join(', ', $this->generators) . ']' , ['collection', 'data', 'llstorage']);
-		$this->addOption('definition-directory', 'd', InputOption::VALUE_OPTIONAL);
+		$this->addOption('def-dir', null, InputOption::VALUE_REQUIRED, '', null);
+		$this->addOption('ignored-namespace', null, InputOption::VALUE_REQUIRED, '', null);
 		$this->addOption('only-print', 'p', InputOption::VALUE_NONE);
 		$this->addOption('force', 'f', InputOption::VALUE_NONE);
 	}
@@ -184,15 +185,21 @@ class GenerateBasicModel extends Command
 
 	private function processOutput(string $output, string $filePath): void
 	{
-		if (! $this->onlyPrint) {
-			$this->write($output, $filePath);
-		} else {
-			echo $output;
-		}
+		$this->write($output, $filePath);
 	}
 
-	private function write(string $content, string $filePath): void
+	private function write(string $content, string $namespace): void
 	{
+		$namespace = ltrim(str_replace('\\', '/', $namespace), '/');
+
+		if (is_string($this->input->getOption('ignored-namespace')))
+		{
+			$ignoredFileSpace = str_replace('\\', '/', $this->input->getOption('ignored-namespace'));
+			$ignoredFileSpace = rtrim(ltrim($ignoredFileSpace, '/'), '/');
+
+			$namespace = ltrim(substr($namespace, strlen($ignoredFileSpace)), '/');
+		}
+
 		$projectFilesPath = '';
 
 		if (strlen($this->projectFilesPath) > 0) {
@@ -210,23 +217,28 @@ class GenerateBasicModel extends Command
 			? ''
 			: $projectFilesPath;
 
-		$fileName = $projectFilesPath . '/' . str_replace('\\', '/', $filePath) . '.php';
+		$fileName = $projectFilesPath . '/' . $namespace . '.php';
 
-		if ($this->force) {
-			try {
-				FileSystem::write($fileName, $content);
-			} catch (IOException $e) {
-				$this->output->write("File {$fileName} cannot be written. " . $e->getMessage());
-			}
+		if ($this->onlyPrint) {
+			$this->output->writeln($fileName);
+			$this->output->writeln($content);
 		} else {
-			if (! file_exists($fileName)) {
+			if ($this->force) {
 				try {
 					FileSystem::write($fileName, $content);
 				} catch (IOException $e) {
 					$this->output->write("File {$fileName} cannot be written. " . $e->getMessage());
 				}
 			} else {
-				$this->output->writeln("File {$fileName} exists. Use force if you need recreate the model.");
+				if (! file_exists($fileName)) {
+					try {
+						FileSystem::write($fileName, $content);
+					} catch (IOException $e) {
+						$this->output->write("File {$fileName} cannot be written. " . $e->getMessage());
+					}
+				} else {
+					$this->output->writeln("File {$fileName} exists. Use force if you need recreate the model.");
+				}
 			}
 		}
 	}
@@ -234,10 +246,9 @@ class GenerateBasicModel extends Command
 	private function resolveNenonPath(): string
 	{
 		$path = __DIR__ . '/../../../../../modelDefinition/';
-		$pathOption = is_string($this->input->getOption('definition-directory'));
 
-		if (is_string($pathOption)) {
-			$path = $pathOption;
+		if (is_string($this->input->getOption('def-dir'))) {
+			$path = getcwd() . '/' . $this->input->getOption('def-dir');
 		}
 
 		$filePath = realpath($path . $this->getNeonName() . '.neon');
@@ -247,7 +258,7 @@ class GenerateBasicModel extends Command
 			return $filePath;
 		}
 
-		throw new \InvalidArgumentException("File {$filePath} not found.");
+		throw new \InvalidArgumentException("File {$path}/{$this->getNeonName()}.neon not found.");
 	}
 
 	private function getNeonName(): string
