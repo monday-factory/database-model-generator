@@ -97,9 +97,6 @@ class DataGenerator
 		$selfBody = '';
 
 		foreach (array_keys($rwProperties) as $name) {
-
-			dump($name);
-
 			$selfBody .= "\t\$data['" . $this->toCamelCase((string) $name) . '\']';
 
 			next($rwProperties) === false ?: $selfBody .= ",\n";
