@@ -160,7 +160,7 @@ class DataGenerator
 	{
 		$expandedFromString = explode('::', $parameter);
 
-		if ($expandedFromString != false && count($expandedFromString) === 2) {
+		if (count($expandedFromString) === 2) {
 			$this->namespace->addUse($expandedFromString[0]);
 			$classReflection = new \ReflectionClass($expandedFromString[0]);
 
