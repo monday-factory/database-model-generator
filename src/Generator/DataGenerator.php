@@ -57,26 +57,32 @@ class DataGenerator
 		$this->addToArrayMethod();
 		$this->addToDatabaseArrayMethod();
 
-		foreach ($this->definition['databaseCols']['rw'] as $name => $property) {
-			$this->addProperty($name, $property);
+		if (isset($this->definition['databaseCols']['rw'])) {
+			foreach ($this->definition['databaseCols']['rw'] as $name => $property) {
+				$this->addProperty($name, $property);
 
-			$constructor->addParameter($this->toCamelCase($name))
-				->setTypeHint($property['type']);
-			$constructor->addComment('@var $' . $this->toCamelCase($name));
+				$constructor->addParameter($this->toCamelCase($name))
+					->setTypeHint($property['type']);
+				$constructor->addComment('@var $' . $this->toCamelCase($name));
 
-			$constructor->addBody('$this->? = ?;', [$this->toCamelCase($name), new PhpLiteral('$' . $this->toCamelCase($name))]);
+				$constructor->addBody('$this->? = ?;', [$this->toCamelCase($name), new PhpLiteral('$' . $this->toCamelCase($name))]);
 
-			$this->addGetter($name, $property);
+				$this->addGetter($name, $property);
+			}
 		}
 
-		foreach ($this->definition['databaseCols']['ro'] as $name => $property) {
-			$this->addProperty($name, $property);
-			$this->addSetter($name, $property);
-			$this->addGetter($name, $property);
+		if (isset($this->definition['databaseCols']['ro'])) {
+			foreach ($this->definition['databaseCols']['ro'] as $name => $property) {
+				$this->addProperty($name, $property);
+				$this->addSetter($name, $property);
+				$this->addGetter($name, $property);
+			}
 		}
 
-		foreach ($this->definition['databaseCols']['rw'] as $name => $property) {
-			$this->addGetter($name, $property);
+		if (isset($this->definition['databaseCols']['rw'])) {
+			foreach ($this->definition['databaseCols']['rw'] as $name => $property) {
+				$this->addGetter($name, $property);
+			}
 		}
 
 		return (string) $this->file;
@@ -137,20 +143,26 @@ class DataGenerator
 			}
 		}
 
-		$fromRow->addBody("\t)\n)");
-		$roProperties = $this->definition['databaseCols']['ro'];
 
-		foreach ($roProperties as $name => $property) {
-			$delimiter = next($roProperties) !== false
-				? ""
-				: ";";
+		if (isset($this->definition['databaseCols']['ro'])) {
+			$fromRow->addBody("\t)\n)");
+			$roProperties = $this->definition['databaseCols']['ro'];
 
-			$pastedProperty = isset($property['fromString'])
-				? str_replace('?', '$row[\'' . $name . '\']', $this->prepareFromStringArgument($property['fromString']))
-				: '$row[\'' . $name . '\']';
+			foreach ($roProperties as $name => $property) {
+				$delimiter = next($roProperties) !== false
+					? ""
+					: ";";
 
-			$fromRow->addBody("->set" . ucfirst($this->toCamelCase((string) $name)) . "({$pastedProperty})" . $delimiter);
+				$pastedProperty = isset($property['fromString'])
+					? str_replace('?', '$row[\'' . $name . '\']', $this->prepareFromStringArgument($property['fromString']))
+					: '$row[\'' . $name . '\']';
+
+				$fromRow->addBody("->set" . ucfirst($this->toCamelCase((string) $name)) . "({$pastedProperty})" . $delimiter);
+			}
+		} else {
+			$fromRow->addBody("\t)\n);");
 		}
+
 	}
 
 	private function prepareFromStringArgument(string $parameter): string
@@ -193,14 +205,16 @@ class DataGenerator
 
 		$body = "return [\n";
 
-		$rwProperties = $this->definition['databaseCols']['rw'];
+		if (isset($this->definition['databaseCols']['rw'])) {
+			$rwProperties = $this->definition['databaseCols']['rw'];
 
-		foreach ($rwProperties as $name => $property) {
-			$toString = isset($property['toString'])
-				? $this->prepareToStringArgument($property['toString'])
-				: '';
+			foreach ($rwProperties as $name => $property) {
+				$toString = isset($property['toString'])
+					? $this->prepareToStringArgument($property['toString'])
+					: '';
 
-			$body .= "\t" . '\'' . $name . '\' => $this->' . $this->toCamelCase((string) $name)  . $toString .  ",\n";
+				$body .= "\t" . '\'' . $name . '\' => $this->' . $this->toCamelCase((string) $name)  . $toString .  ",\n";
+			}
 		}
 
 		$body .= '];';
