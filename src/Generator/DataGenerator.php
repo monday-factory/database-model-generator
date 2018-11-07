@@ -63,7 +63,8 @@ class DataGenerator
 
 				$constructor->addParameter($this->toCamelCase($name))
 					->setTypeHint($property['type']);
-				$constructor->addComment('@var $' . $this->toCamelCase($name));
+
+				$constructor->addComment('@var ' . $this->getTypehint($property['type']) . ' $' . $this->toCamelCase($name));
 
 				$constructor->addBody('$this->? = ?;', [$this->toCamelCase($name), new PhpLiteral('$' . $this->toCamelCase($name))]);
 
@@ -123,7 +124,11 @@ class DataGenerator
 		$fromRow->addParameter('row')
 			->setTypeHint('array');
 
-		$fromRow->addBody("return (new self(");
+		if (isset($this->definition['databaseCols']['ro']) && count($this->definition['databaseCols']['ro']) > 0) {
+			$fromRow->addBody("return (new self(");
+		} else {
+			$fromRow->addBody("return new self(");
+		}
 
 		$rwProperties = $this->definition['databaseCols']['rw'];
 
@@ -144,7 +149,7 @@ class DataGenerator
 		}
 
 
-		if (isset($this->definition['databaseCols']['ro'])) {
+		if (isset($this->definition['databaseCols']['ro']) && count($this->definition['databaseCols']['ro']) > 0) {
 			$fromRow->addBody("\t)\n)");
 			$roProperties = $this->definition['databaseCols']['ro'];
 
@@ -159,8 +164,9 @@ class DataGenerator
 
 				$fromRow->addBody("->set" . ucfirst($this->toCamelCase((string) $name)) . "({$pastedProperty})" . $delimiter);
 			}
-		} else {
 			$fromRow->addBody("\t)\n);");
+		} else {
+			$fromRow->addBody("\t);");
 		}
 
 	}
