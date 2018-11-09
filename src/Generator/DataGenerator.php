@@ -49,8 +49,7 @@ class DataGenerator
 
 		$this->class->setImplements([IDatabaseData::class]);
 
-		$constructor = $this->class->addMethod('__construct')
-			->setVisibility('public');
+		$this->addConstructor();
 
 		$this->addFromDataMethod();
 		$this->addFromRowMethod();
@@ -60,13 +59,6 @@ class DataGenerator
 		if (isset($this->definition['databaseCols']['rw'])) {
 			foreach ($this->definition['databaseCols']['rw'] as $name => $property) {
 				$this->addProperty($name, $property);
-
-				$constructor->addParameter($this->toCamelCase($name))
-					->setTypeHint($property['type']);
-
-				$constructor->addComment('@var ' . $this->getTypehint($property['type']) . ' $' . $this->toCamelCase($name));
-
-				$constructor->addBody('$this->? = ?;', [$this->toCamelCase($name), new PhpLiteral('$' . $this->toCamelCase($name))]);
 
 				$this->addGetter($name, $property);
 			}
@@ -87,6 +79,45 @@ class DataGenerator
 		}
 
 		return (string) $this->file;
+	}
+
+	private function addConstructor(): void
+	{
+		$constructor = $this->class->addMethod('__construct')
+			->setVisibility('public');
+
+		if (isset($this->definition['databaseCols']['rw'])) {
+			foreach ($this->definition['databaseCols']['rw'] as $name => $property) {
+				$nullable = $this->isPropertyNullable($property);
+
+				$constructor->addParameter($this->toCamelCase($name))
+					->setTypeHint($property['type'])
+					->setNullable($nullable);
+
+				$constructor->addComment('@var '
+					. ($nullable ? 'null|' : '')
+					. $this->getTypehint($property['type'])
+					. ' $'
+					. $this->toCamelCase($name)
+				);
+
+				$constructor->addBody('$this->? = ?;', [
+					$this->toCamelCase($name),
+					new PhpLiteral('$' . $this->toCamelCase($name)),
+				]);
+
+			}
+		}
+	}
+
+	/**
+	 * @param array $property
+	 *
+	 * @return bool
+	 */
+	private function isPropertyNullable(array $property)
+	{
+		return isset($property['nullable']) && $property['nullable'] === true;
 	}
 
 	private function addFromDataMethod(): void
@@ -148,7 +179,6 @@ class DataGenerator
 			}
 		}
 
-
 		if (isset($this->definition['databaseCols']['ro']) && count($this->definition['databaseCols']['ro']) > 0) {
 			$fromRow->addBody("\t)\n)");
 			$roProperties = $this->definition['databaseCols']['ro'];
@@ -164,11 +194,9 @@ class DataGenerator
 
 				$fromRow->addBody("->set" . ucfirst($this->toCamelCase((string) $name)) . "({$pastedProperty})" . $delimiter);
 			}
-			$fromRow->addBody("\t)\n);");
 		} else {
 			$fromRow->addBody("\t);");
 		}
-
 	}
 
 	private function prepareFromStringArgument(string $parameter): string
@@ -237,9 +265,15 @@ class DataGenerator
 	{
 		$getter = $this->class->addMethod('get' . ucfirst($this->toCamelCase($name)))
 			->setReturnType($propertyDefinition['type'])
+			->setReturnNullable($this->isPropertyNullable($propertyDefinition))
 			->addBody('return $this->?;', [$this->toCamelCase($name)]);
 
-		$getter->addComment('@return ' . $this->getTypehint($propertyDefinition['type']));
+		$getter->addComment(
+			'@return '
+			. ($this->isPropertyNullable($propertyDefinition) ? 'null|' : '')
+			. $this->getTypehint($propertyDefinition['type']
+			)
+		);
 	}
 
 	private function addSetter(string $name, array $propertyDefinition): void
@@ -249,16 +283,27 @@ class DataGenerator
 			->addBody('return $this;');
 
 		$setter->addParameter($this->toCamelCase($name))
+			->setNullable($this->isPropertyNullable($propertyDefinition))
 			->setTypeHint($propertyDefinition['type']);
 
-		$setter->addComment('@var ' . $this->getTypehint($propertyDefinition['type']));
+		$setter->addComment(
+			'@var '
+			. ($this->isPropertyNullable($propertyDefinition) ? 'null|' : '')
+			. $this->getTypehint($propertyDefinition['type']
+			)
+		);
 	}
 
 	private function addProperty(string $name, array $propertyDefinition): void
 	{
 		$this->class->addProperty($this->toCamelCase($name))
 			->setVisibility('private')
-			->addComment("\n@var " . $this->getTypehint($propertyDefinition['type']));
+			->addComment(
+				"\n@var "
+				. ($this->isPropertyNullable($propertyDefinition) ? 'null|' : '')
+				. $this->getTypehint($propertyDefinition['type']
+				)
+			);
 	}
 
 	private function getTypehint(string $type): string
