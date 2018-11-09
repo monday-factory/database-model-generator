@@ -129,7 +129,7 @@ class DataGenerator
 			->addComment("\n@return " . (new \ReflectionClass(IDatabaseData::class))->getShortName());
 
 		$fromData->addParameter('data')
-			->setTypeHint('iterable');
+			->setTypeHint('array');
 
 		$rwProperties = $this->definition['databaseCols']['rw'];
 		$selfBody = '';
