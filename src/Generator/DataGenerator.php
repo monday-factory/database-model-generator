@@ -280,7 +280,8 @@ class DataGenerator
 	{
 		$setter = $this->class->addMethod('set' . ucfirst($this->toCamelCase($name)))
 			->addBody("\$this->? = $?;\n", [$this->toCamelCase($name), $this->toCamelCase($name)])
-			->addBody('return $this;');
+			->addBody('return $this;')
+			->setReturnType('self');
 
 		$setter->addParameter($this->toCamelCase($name))
 			->setNullable($this->isPropertyNullable($propertyDefinition))
