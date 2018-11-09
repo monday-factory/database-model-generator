@@ -44,6 +44,7 @@ databaseCols:
 		updated:
 			type: \DateTime
 			fromString: '\DateTime(?)'
+			nullable: true
 ```
 
 Now you call the generator command.
