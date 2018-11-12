@@ -279,6 +279,7 @@ class DataGenerator
 	private function addSetter(string $name, array $propertyDefinition): void
 	{
 		$setter = $this->class->addMethod('set' . ucfirst($this->toCamelCase($name)))
+			->setVisibility('private')
 			->addBody("\$this->? = $?;\n", [$this->toCamelCase($name), $this->toCamelCase($name)])
 			->addBody('return $this;')
 			->setReturnType('self');
