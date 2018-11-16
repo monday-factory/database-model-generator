@@ -251,7 +251,7 @@ class GenerateBasicModel extends Command
 			$path = getcwd() . '/' . $this->input->getOption('def-dir');
 		}
 
-		$filePath = realpath($path . $this->getNeonName() . '.neon');
+		$filePath = realpath($path . '/' . $this->getNeonName() . '.neon');
 
 		if ($filePath !== false && file_exists($filePath))
 		{
