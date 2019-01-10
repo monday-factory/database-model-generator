@@ -44,6 +44,7 @@
 		"slevomat/coding-standard": "^4.0",
 		"monday-factory/php-code-checker": "^1.0"
 	},
+	"bin": ["src/bin/database-model-generator"],
 	"scripts": {
 		"app:phpstan": "vendor/bin/phpstan analyse src -c phpstan.neon --level 7",
 		"app:phpcs": "vendor/bin/phpcs --standard=vendor/monday-factory/php-code-checker/ruleset.xml --extensions=php,phpt --tab-width=4 --ignore=temp -sp src",
