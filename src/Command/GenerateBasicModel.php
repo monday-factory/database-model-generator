@@ -19,7 +19,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class GenerateBasicModel extends Command
 {
 
-	public const COMMAND_NAME = 'database-model:generate:basic-model';
+	public const COMMAND_NAME = 'basic-model';
 
 	/**
 	 * @var array
@@ -84,7 +84,7 @@ class GenerateBasicModel extends Command
 				For all leave argument blank. Allowed values: 
 				[' . join(', ', $this->generators) . ']' , ['collection', 'data', 'llstorage']);
 		$this->addOption('def-dir', null, InputOption::VALUE_REQUIRED, '', null);
-		$this->addOption('ignored-namespace', null, InputOption::VALUE_REQUIRED, '', null);
+		$this->addOption('ignored-namespace', 'I', InputOption::VALUE_REQUIRED, '', null);
 		$this->addOption('only-print', 'p', InputOption::VALUE_NONE);
 		$this->addOption('force', 'f', InputOption::VALUE_NONE);
 	}
