@@ -37,8 +37,9 @@ class CollectionGenerator
 
 		$class->setExtends(BaseDatabaseDataCollection::class);
 
-		$class->addMethod('create')
-			->addBody('return new static($data, ?);', [new PhpLiteral($this->getRowFactoryClassName() . '::class')])
+		$methodCreate = $class->addMethod('create');
+
+		$methodCreate->addBody('return new static($data, ?, $idField);', [new PhpLiteral($this->getRowFactoryClassName() . '::class')])
 			->setVisibility('public')
 			->setStatic()
 			->setReturnType(IDatabaseDataCollection::class)
@@ -46,6 +47,11 @@ class CollectionGenerator
 			->addComment('@return ' . (new \ReflectionClass(IDatabaseDataCollection::class))->getShortName())
 			->addParameter('data')
 			->setTypeHint('iterable');
+
+		$methodCreate->addParameter('idField')
+			->setTypeHint('string')
+			->setNullable()
+			->setDefaultValue(null);
 
 		return (string) $file;
 	}
