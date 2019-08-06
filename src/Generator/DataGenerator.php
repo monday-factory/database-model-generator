@@ -131,7 +131,7 @@ class DataGenerator
 		$fromData->addParameter('data')
 			->setTypeHint('array');
 
-		$rwProperties = $this->definition['databaseCols']['rw'];
+		$rwProperties = isset($this->definition['databaseCols']['rw']) ? $this->definition['databaseCols']['rw'] : [];
 		$selfBody = '';
 
 		foreach (array_keys($rwProperties) as $name) {
@@ -161,7 +161,7 @@ class DataGenerator
 			$fromRow->addBody("return new self(");
 		}
 
-		$rwProperties = $this->definition['databaseCols']['rw'];
+		$rwProperties = isset($this->definition['databaseCols']['rw']) ? $this->definition['databaseCols']['rw'] : [];
 
 		foreach ($rwProperties as $name => $property) {
 			$delimiter = next($rwProperties) === false
