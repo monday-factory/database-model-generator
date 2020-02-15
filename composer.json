@@ -31,7 +31,7 @@
 	},
 	"require": {
 		"php": "^7.2",
-		"nette/utils": "^3.1",
+		"nette/utils": "^3.0",
 		"tracy/tracy": "^2.6",
 		"nette/php-generator": "^3.3",
 		"contributte/console": "^0.3.0",
