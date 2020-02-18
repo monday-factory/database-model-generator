@@ -21,6 +21,8 @@ class GenerateBasicModel extends Command
 
 	public const COMMAND_NAME = 'basic-model';
 
+	protected static $defaultName = 'basic-model';
+
 	/**
 	 * @var array
 	 */
@@ -61,7 +63,6 @@ class GenerateBasicModel extends Command
 	 */
 	private $input;
 
-
 	public function __construct()
 	{
 		parent::__construct();
@@ -85,7 +86,7 @@ class GenerateBasicModel extends Command
 				[' . join(', ', $this->generators) . ']' , ['collection', 'data', 'llstorage']);
 		$this->addOption('def-dir', null, InputOption::VALUE_REQUIRED, '', null);
 		$this->addOption('ignored-namespace', 'I', InputOption::VALUE_REQUIRED, '', null);
-		$this->addOption('only-print', 'p', InputOption::VALUE_NONE);
+		$this->addOption('dry-run', 'p', InputOption::VALUE_NONE);
 		$this->addOption('force', 'f', InputOption::VALUE_NONE);
 	}
 
@@ -102,8 +103,8 @@ class GenerateBasicModel extends Command
 			throw new \InvalidArgumentException('Parameter projectFilesPath must be string.');
 		}
 
-		$this->onlyPrint = is_bool($input->getOption('only-print'))
-			? $input->getOption('only-print')
+		$this->onlyPrint = is_bool($input->getOption('dry-run'))
+			? $input->getOption('dry-run')
 			: false;
 		$this->force = is_bool($input->getOption('force'))
 			? $input->getOption('force')

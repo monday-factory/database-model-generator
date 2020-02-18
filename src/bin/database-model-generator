@@ -1,10 +1,11 @@
 #!/usr/bin/env php
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1);
 
-use Contributte\Console\Application;
+require __DIR__ . '/../../../../autoload.php';
 
-$container = require __DIR__ . '/../bootstrap.php';
-
-$container->getByType(Application::class)->run();
+exit(MondayFactory\DatabaseModelGenerator\Bootstrap::boot()
+    ->createContainer()
+    ->getByType(Contributte\Console\Application::class)
+    ->run());

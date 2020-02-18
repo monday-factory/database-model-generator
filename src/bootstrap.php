@@ -2,16 +2,20 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../../../../vendor/autoload.php';
+namespace MondayFactory\DatabaseModelGenerator;
 
-$configurator = new Nette\Configurator;
+use Nette\Configurator;
 
-$configurator->setDebugMode(true);
-$configurator->enableTracy();
 
-$configurator->setTimeZone('Europe/Prague');
-$configurator->setTempDirectory(__DIR__ . '/../temp');
+class Bootstrap
+{
+	public static function boot(): Configurator
+	{
+		$configurator = new Configurator;
 
-$configurator->addConfig(__DIR__ . '/config/config.neon');
+		$configurator->setTempDirectory(__DIR__ . '/../temp');
+		$configurator->addConfig(__DIR__ . '/config/common.neon');
 
-return $configurator->createContainer();
+		return $configurator;
+	}
+}
