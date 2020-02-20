@@ -117,7 +117,7 @@ class DataGenerator
 	 */
 	private function isPropertyNullable(array $property)
 	{
-		return isset($property['nullable']) && $property['nullable'] === true;
+		return isset($property['nullable']) && boolval($property['nullable']) === true;
 	}
 
 	private function addFromDataMethod(): void
@@ -191,7 +191,7 @@ class DataGenerator
 				$fromRowTypecastingPrefix = "(" . $property['type'] . ") ";
 			}
 
-			if (isset($property['nullable']) && boolval($property['nullable']) === true) {
+			if ($this->isPropertyNullable($property)) {
 				$fromRowNullablePrefix = 'is_null($row[\'' . $name . '\']) ? null : ';
 			}
 
@@ -266,7 +266,13 @@ class DataGenerator
 					? $this->prepareToStringArgument($property['toString'])
 					: '';
 
-				$body .= "\t" . '\'' . $name . '\' => $this->' . $this->toCamelCase((string) $name)  . $toString .  ",\n";
+				$body .= "\t" . '\'' . $name . '\' =>';
+
+				if ($this->isPropertyNullable($property)) {
+					$body .= ' is_null($this->' . $this->toCamelCase((string) $name) . ') ? null :';
+				}
+
+				$body .= ' $this->' . $this->toCamelCase((string) $name)  . $toString .  ",\n";
 			}
 		}
 
