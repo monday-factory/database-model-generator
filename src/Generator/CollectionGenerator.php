@@ -37,6 +37,16 @@ class CollectionGenerator
 
 		$class->setExtends(BaseDatabaseDataCollection::class);
 
+		if (isset($this->definition['databaseTableId']) && ! empty($this->definition['databaseTableId'])) {
+			$idFieldSerializer = $class->addProperty('idFieldSerializer');
+
+			$idField = $this->findIdField();
+
+			if (is_array($idField) && isset($idField['toString'])) {
+				$idFieldSerializer->setValue($idField['toString']);
+			}
+		}
+
 		$methodCreate = $class->addMethod('create');
 
 		$methodCreate->addBody('return new static($data, ?, $idField);', [new PhpLiteral($this->getRowFactoryClassName() . '::class')])
@@ -54,6 +64,26 @@ class CollectionGenerator
 			->setDefaultValue(null);
 
 		return (string) $file;
+	}
+
+	private function findIdField(): ?array
+	{
+		if (
+			isset($this->definition['databaseCols']['rw'])
+			&& isset(
+				$this->definition['databaseCols']['rw'][$this->definition['databaseTableId']]
+			)
+		) {
+			return $this->definition['databaseCols']['rw'][$this->definition['databaseTableId']];
+		} else if (isset($this->definition['databaseCols']['rw'])
+			&& isset(
+				$this->definition['databaseCols']['ro'][$this->definition['databaseTableId']]
+			)
+		) {
+			return $this->definition['databaseCols']['ro'][$this->definition['databaseTableId']];
+		}
+
+		return null;
 	}
 
 }
