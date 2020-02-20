@@ -47,7 +47,7 @@ class CollectionGenerator
 				$idFieldSerializer = preg_replace("/(\(.*\))/m",'', $idField['toString']);
 				$idFieldSerializer = preg_replace("/(->)+/m",'', $idFieldSerializer);
 
-				$idFieldSerializerProperty->setValue($idFieldSerializer);
+				$idFieldSerializerProperty->setValue($idFieldSerializer)->setProtected();
 			}
 		}
 
