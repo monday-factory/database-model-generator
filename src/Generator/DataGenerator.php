@@ -168,29 +168,34 @@ class DataGenerator
 				? ""
 				: ",";
 
+			$fromRowNullablePrefix = '';
+			$fromRowTypecastingPrefix = '';
+
 			if (isset($property['fromString'])) {
-				$fromRow->addBody(
-					"\t\t"
-					. str_replace('?', '$row[\'' . $name . '\']', $this->prepareFromStringArgument($property['fromString']))
-					. $delimiter
-				);
+				$fromRowBody =
+					str_replace('?', '$row[\'' . $name . '\']', $this->prepareFromStringArgument($property['fromString']))
+					. $delimiter;
 			} else {
-				$argBody = "\$row['" . $name . '\']' . $delimiter;
-				$argPrefix = '';
-
-				if (
-					in_array($property['type'], [
-						'bool',
-						'int',
-						'double',
-						'string',
-					]))
-				{
-					$argPrefix = "(" . $property['type'] . ")";
-				}
-
-				$fromRow->addBody("\t\t" . $argPrefix . $argBody);
+				$fromRowBody = "\$row['" . $name . '\']' . $delimiter;
 			}
+
+			if (
+				in_array($property['type'], [
+					'bool',
+					'int',
+					'double',
+					'string',
+				])
+			)
+			{
+				$fromRowTypecastingPrefix = "(" . $property['type'] . ") ";
+			}
+
+			if (isset($property['nullable']) && boolval($property['nullable']) === true) {
+				$fromRowNullablePrefix = 'is_null($row[\'' . $name . '\']) ? null : ';
+			}
+
+			$fromRow->addBody("\t\t" . $fromRowNullablePrefix . $fromRowTypecastingPrefix . $fromRowBody);
 		}
 
 		if (isset($this->definition['databaseCols']['ro']) && count($this->definition['databaseCols']['ro']) > 0) {
