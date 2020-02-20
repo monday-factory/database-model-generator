@@ -38,12 +38,16 @@ class CollectionGenerator
 		$class->setExtends(BaseDatabaseDataCollection::class);
 
 		if (isset($this->definition['databaseTableId']) && ! empty($this->definition['databaseTableId'])) {
-			$idFieldSerializer = $class->addProperty('idFieldSerializer');
+			$idFieldSerializerProperty = $class->addProperty('idFieldSerializer');
 
 			$idField = $this->findIdField();
 
 			if (is_array($idField) && isset($idField['toString'])) {
-				$idFieldSerializer->setValue($idField['toString']);
+
+				$idFieldSerializer = preg_replace("/(\(.*\))/m",'', $idField['toString']);
+				$idFieldSerializer = preg_replace("/(->)+/m",'', $idFieldSerializer);
+
+				$idFieldSerializerProperty->setValue($idFieldSerializer);
 			}
 		}
 
