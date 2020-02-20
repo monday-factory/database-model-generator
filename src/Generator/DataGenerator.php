@@ -175,7 +175,21 @@ class DataGenerator
 					. $delimiter
 				);
 			} else {
-				$fromRow->addBody("\t\t\$row['" . $name . '\']' . $delimiter);
+				$argBody = "\$row['" . $name . '\']' . $delimiter;
+				$argPrefix = '';
+
+				if (
+					in_array($property['type'], [
+						'bool',
+						'int',
+						'double',
+						'string',
+					]))
+				{
+					$argPrefix = "(" . $property['type'] . ")";
+				}
+
+				$fromRow->addBody("\t\t" . $argPrefix . $argBody);
 			}
 		}
 
