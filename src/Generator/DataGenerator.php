@@ -90,9 +90,13 @@ class DataGenerator
 			foreach ($this->definition['databaseCols']['rw'] as $name => $property) {
 				$nullable = $this->isPropertyNullable($property);
 
-				$constructor->addParameter($this->toCamelCase($name))
+				$param = $constructor->addParameter($this->toCamelCase($name))
 					->setTypeHint($property['type'])
 					->setNullable($nullable);
+
+				if (isset($property['default'])) {
+					$param->setDefaultValue($property['default']);
+				}
 
 				$constructor->addComment('@var '
 					. ($nullable ? 'null|' : '')
