@@ -39,7 +39,12 @@ class GenerateBasicModel extends Command
 	/**
 	 * @var bool
 	 */
-	private $onlyPrint;
+	private $printToStdOut;
+
+	/**
+	 * @var bool
+	 */
+	private $dryRun;
 
 	/**
 	 * @var bool
@@ -85,7 +90,8 @@ class GenerateBasicModel extends Command
 				[' . join(', ', $this->generators) . ']' , ['collection', 'data', 'llstorage']);
 		$this->addOption('def-dir', null, InputOption::VALUE_REQUIRED, '', null);
 		$this->addOption('ignored-namespace', 'I', InputOption::VALUE_REQUIRED, '', null);
-		$this->addOption('only-print', 'p', InputOption::VALUE_NONE);
+		$this->addOption('p', 'p', InputOption::VALUE_NONE);
+		$this->addOption('dry-run', null, InputOption::VALUE_NONE);
 		$this->addOption('force', 'f', InputOption::VALUE_NONE);
 	}
 
@@ -102,13 +108,20 @@ class GenerateBasicModel extends Command
 			throw new \InvalidArgumentException('Parameter projectFilesPath must be string.');
 		}
 
-		$this->onlyPrint = is_bool($input->getOption('only-print'))
-			? $input->getOption('only-print')
+		$this->printToStdOut = is_bool($input->getOption('p'))
+			? $input->getOption('p')
+			: false;
+		$this->dryRun = is_bool($input->getOption('dry-run'))
+			? $input->getOption('dry-run')
 			: false;
 		$this->force = is_bool($input->getOption('force'))
 			? $input->getOption('force')
 			: false;
 		$this->output = $output;
+
+		if ($this->dryRun) {
+			$this->output->write("<fg=yellow>Dry run!</>", true);
+		}
 
 		try {
 			if (! is_string($input->getArgument('neonName'))) {
@@ -158,7 +171,7 @@ class GenerateBasicModel extends Command
 			}
 		}
 
-		$this->output->writeln("Done.");
+		$this->output->writeln("<fg=green>Done.</>");
 	}
 
 	private function generateCollection(): void
@@ -219,25 +232,36 @@ class GenerateBasicModel extends Command
 
 		$fileName = $projectFilesPath . '/' . $namespace . '.php';
 
-		if ($this->onlyPrint) {
-			$this->output->writeln($fileName);
+
+		if ($this->dryRun) {
+			if (file_exists($fileName)) {
+				$this->output->write("<fg=red>File {$fileName} exists. You must use force (--force|-f) to recreate.</>", true);
+			} else {
+				$this->output->write("<fg=green>File {$fileName} is ready for create.</>", true);
+			}
+		}
+		if ($this->printToStdOut) {
+			if (! $this->dryRun) {
+				$this->output->write("<fg=green>{$fileName}</>", true);
+			}
 			$this->output->writeln($content);
-		} else {
+		}
+		if (! $this->dryRun) {
 			if ($this->force) {
 				try {
 					FileSystem::write($fileName, $content);
 				} catch (IOException $e) {
-					$this->output->write("File {$fileName} cannot be written. " . $e->getMessage());
+					$this->output->write("<fg=red>File {$fileName} cannot be written.</> " . $e->getMessage(), true);
 				}
 			} else {
 				if (! file_exists($fileName)) {
 					try {
 						FileSystem::write($fileName, $content);
 					} catch (IOException $e) {
-						$this->output->write("File {$fileName} cannot be written. " . $e->getMessage());
+						$this->output->write("<fg=red>File {$fileName} cannot be written.</> " . $e->getMessage(), true);
 					}
 				} else {
-					$this->output->writeln("File {$fileName} exists. Use force if you need recreate the model.");
+					$this->output->write("<fg=red>File {$fileName} exists. Use force (--force|-f) if you need recreate the model.</>", true);
 				}
 			}
 		}
