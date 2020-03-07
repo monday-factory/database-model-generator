@@ -144,7 +144,7 @@ class DataGenerator
 			next($rwProperties) === false ?: $selfBody .= ",\n";
 		}
 
-		$fromData->addBody("return new self(\n?\n);", [new PhpLiteral($selfBody)]);
+		$fromData->addBody("return new self(\n\t?\n);", [new PhpLiteral($selfBody)]);
 	}
 
 	private function addFromRowMethod(): void
