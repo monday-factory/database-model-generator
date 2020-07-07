@@ -215,6 +215,10 @@ class DataGenerator
 					? str_replace('?', '$row[\'' . $name . '\']', $this->prepareFromStringArgument($property['fromString']))
 					: '$row[\'' . $name . '\']';
 
+				if (isset($property['nullable']) && boolval($property['nullable'])) {
+					$pastedProperty .= ' ?? null';
+				}
+
 				$fromRow->addBody("->set" . ucfirst($this->toCamelCase((string) $name)) . "({$pastedProperty})" . $delimiter);
 			}
 		} else {
