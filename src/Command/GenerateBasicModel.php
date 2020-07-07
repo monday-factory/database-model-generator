@@ -245,7 +245,19 @@ class GenerateBasicModel extends Command
 			if (! $this->dryRun) {
 				$this->output->write("<fg=green>{$fileName}</>", true);
 			}
-			$this->output->writeln($content);
+
+			try {
+				$oldFileContent = file_get_contents($fileName);
+
+				require_once 'SideBySide.php';
+
+				$diff = new \SideBySide();
+				$diff->setAffixes(\SideBySide::AFFIXES_CLI);
+				echo $diff->compute($oldFileContent, $content)[1];
+			} catch (\Exception $e) {
+				$this->output->writeln($content);
+			}
+
 		}
 		if (! $this->dryRun) {
 			if ($this->force) {
