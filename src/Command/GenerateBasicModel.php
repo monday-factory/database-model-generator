@@ -68,6 +68,11 @@ class GenerateBasicModel extends Command
 	 */
 	private $input;
 
+	/**
+	 * @var array
+	 */
+	private $errors = [];
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -81,17 +86,18 @@ class GenerateBasicModel extends Command
 		$this->addArgument('neonName', InputArgument::REQUIRED, 'Name of the neon with definition.');
 		$this->addArgument(
 			'projectFilesPath',
-			InputArgument::REQUIRED,
-			'Path to the project files e.g. "app", or absolute "/data/app". Default is used getcwd(): ' . getcwd() . '.');
+			InputArgument::OPTIONAL,
+			'Path to the project files e.g. "app", or absolute "/data/app".',
+			getcwd() . '/app/model');
 		$this->addArgument(
 			'whatGenerate',
 			InputArgument::IS_ARRAY | InputArgument::OPTIONAL ,
 			'What You need to generate? You can add more types as list separated by space. 
 				For all leave argument blank. Allowed values: 
 				[' . join(', ', $this->generators) . ']' , ['collection', 'data', 'llstorage']);
-		$this->addOption('def-dir', null, InputOption::VALUE_REQUIRED, '', null);
+		$this->addOption('def-dir', null, InputOption::VALUE_REQUIRED, '', getcwd() . '/modelDefinition');
 		$this->addOption('ignored-namespace', 'I', InputOption::VALUE_REQUIRED, '', null);
-		$this->addOption('p', 'p', InputOption::VALUE_NONE);
+		$this->addOption('p', 'p', InputOption::VALUE_NONE, 'Print generated files to stdout');
 		$this->addOption('dry-run', null, InputOption::VALUE_NONE);
 		$this->addOption('force', 'f', InputOption::VALUE_NONE);
 	}
@@ -172,7 +178,16 @@ class GenerateBasicModel extends Command
 			}
 		}
 
-		$this->output->writeln("<fg=green>Done.</>");
+		if (count($this->errors)) {
+			$this->output->writeln("<fg=yellow>Finished with errors.</> ");
+
+			foreach ($this->errors as $error) {
+				$this->output->writeln("<fg=yellow>$error</> ");
+			}
+
+		} else {
+			$this->output->write("<fg=green>Done.</>");
+		}
 	}
 
 	private function generateCollection(): void
@@ -220,6 +235,9 @@ class GenerateBasicModel extends Command
 			$projectFilesPath = substr($this->projectFilesPath, 0, 1) === '/'
 				? realpath($this->projectFilesPath)
 				: realpath(getcwd() . '/' . $this->projectFilesPath);
+
+			if (strlen($this->projectFilesPath) > 1 && $projectFilesPath === false) {
+			}
 		} else {
 			$cwd = getcwd();
 			$projectFilesPath = $cwd !== false
@@ -237,6 +255,10 @@ class GenerateBasicModel extends Command
 		if ($this->dryRun) {
 			if (file_exists($fileName)) {
 				$this->output->write("<fg=red>File {$fileName} exists. You must use force (--force|-f) to recreate.</>", true);
+			} elseif ($projectFilesPath === '') {
+				$this->errors[] = "Cannot save file $fileName, directory $this->projectFilesPath is not exists!";
+
+				$this->output->write("<fg=red>Directory $this->projectFilesPath is not exists.</> ", true);
 			} else {
 				$this->output->write("<fg=green>File {$fileName} is ready for create.</>", true);
 			}
@@ -247,19 +269,30 @@ class GenerateBasicModel extends Command
 			}
 
 			try {
-				$oldFileContent = file_get_contents($fileName);
+				$oldFileContent = @file_get_contents($fileName);
 
-				require_once 'SideBySide.php';
+				if (false === $oldFileContent) {
+					$this->output->writeln($content);
+				} else {
+					require_once 'SideBySide.php';
 
-				$diff = new \SideBySide();
-				$diff->setAffixes(\SideBySide::AFFIXES_CLI);
-				echo $diff->compute($oldFileContent, $content)[1];
+					$diff = new \SideBySide();
+					$diff->setAffixes(\SideBySide::AFFIXES_CLI);
+					echo $diff->compute($oldFileContent, $content)[1];
+				}
+
 			} catch (\Exception $e) {
 				$this->output->writeln($content);
 			}
 
 		}
 		if (! $this->dryRun) {
+			if ($projectFilesPath === '') {
+				$this->errors[] = "Cannot save file $fileName, directory $this->projectFilesPath is not exists!";
+
+				return;
+			}
+
 			if ($this->force) {
 				try {
 					FileSystem::write($fileName, $content);
@@ -285,7 +318,7 @@ class GenerateBasicModel extends Command
 		$path = __DIR__ . '/../../../../../modelDefinition/';
 
 		if (is_string($this->input->getOption('def-dir'))) {
-			$path = getcwd() . '/' . $this->input->getOption('def-dir');
+			$path = $this->input->getOption('def-dir');
 		}
 
 		$filePath = realpath($path . '/' . $this->getNeonName() . '.neon');

@@ -247,6 +247,8 @@ class DataGenerator
 
 			return 'new ' . $parameter;
 		}
+
+		return $parameter;
 	}
 
 	private function addToArrayMethod(): void
