@@ -9,6 +9,7 @@ use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\PhpFile;
 use Nette\PhpGenerator\PhpLiteral;
 use Nette\PhpGenerator\PhpNamespace;
+use Nette\PhpGenerator\PsrPrinter;
 
 class DataGenerator
 {
@@ -28,7 +29,7 @@ class DataGenerator
 	/**
 	 * @var PhpFile
 	 */
-	private $file;
+	public $file;
 
 	public function __construct(array $definition, string $name)
 	{
@@ -37,7 +38,7 @@ class DataGenerator
 		$this->content = $this->generate();
 	}
 
-	private function generate(): string
+	private function generate(): PhpFile
 	{
 		$this->file = new PhpFile;
 		$this->file->setStrictTypes();
@@ -78,7 +79,7 @@ class DataGenerator
 			}
 		}
 
-		return (string) $this->file;
+		return $this->file;
 	}
 
 	private function addConstructor(): void
@@ -160,7 +161,7 @@ class DataGenerator
 			->setTypeHint('array');
 
 		if (isset($this->definition['databaseCols']['ro']) && count($this->definition['databaseCols']['ro']) > 0) {
-			$fromRow->addBody("return (new self(");
+			$fromRow->addBody('$instance = new self(');
 		} else {
 			$fromRow->addBody("return new self(");
 		}
@@ -176,9 +177,25 @@ class DataGenerator
 			$fromRowTypecastingPrefix = '';
 
 			if (isset($property['fromString'])) {
+
+				$classTest = [];
+				preg_match('/(?<construct>new +)?(?<class>[\\\\0-9a-zA-Z]+)(?<method>[::a-zA-Z0-9()?]+)/m', $property['fromString'], $classTest);
+
+				if (isset($classTest['class']) && class_exists($classTest['class'])) {
+					$usedAlias = null;
+					$this->namespace->addUse($classTest['class'], null, $usedAlias);
+
+					$fromRowBody =
+						($classTest['construct'] ? 'new ' : '') .
+						$usedAlias .
+						str_replace('?', '$row[\'' . $name . '\']', $classTest['method']) .
+						$delimiter;
+				} else {
 				$fromRowBody =
 					str_replace('?', '$row[\'' . $name . '\']', $this->prepareFromStringArgument($property['fromString']))
 					. $delimiter;
+				}
+
 			} else {
 				$fromRowBody = "\$row['" . $name . '\']' . $delimiter;
 			}
@@ -199,17 +216,18 @@ class DataGenerator
 				$fromRowNullablePrefix = 'is_null($row[\'' . $name . '\']) ? null : ';
 			}
 
-			$fromRow->addBody("\t\t" . $fromRowNullablePrefix . $fromRowTypecastingPrefix . $fromRowBody);
+			$fromRow->addBody("\t" . $fromRowNullablePrefix . $fromRowTypecastingPrefix . $fromRowBody);
 		}
 
 		if (isset($this->definition['databaseCols']['ro']) && count($this->definition['databaseCols']['ro']) > 0) {
-			$fromRow->addBody("\t)\n)");
+			$fromRow->addBody(");");
 			$roProperties = $this->definition['databaseCols']['ro'];
 
 			foreach ($roProperties as $name => $property) {
-				$delimiter = next($roProperties) !== false
-					? ""
-					: ";";
+//				$delimiter = next($roProperties) !== false
+//					? ""
+//					: ";";
+				$delimiter = ';';
 
 				$pastedProperty = isset($property['fromString'])
 					? str_replace('?', '$row[\'' . $name . '\']', $this->prepareFromStringArgument($property['fromString']))
@@ -219,10 +237,12 @@ class DataGenerator
 					$pastedProperty .= ' ?? null';
 				}
 
-				$fromRow->addBody("->set" . ucfirst($this->toCamelCase((string) $name)) . "({$pastedProperty})" . $delimiter);
+				$fromRow->addBody('$instance->set' . ucfirst($this->toCamelCase((string) $name)) . "({$pastedProperty})" . $delimiter);
 			}
+
+			$fromRow->addBody("\n" . 'return $instance;');
 		} else {
-			$fromRow->addBody("\t);");
+			$fromRow->addBody(");");
 		}
 	}
 

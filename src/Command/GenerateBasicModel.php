@@ -7,6 +7,7 @@ namespace MondayFactory\DatabaseModelGenerator\Command;
 use MondayFactory\DatabaseModelGenerator\Generator\CollectionGenerator;
 use MondayFactory\DatabaseModelGenerator\Generator\DataGenerator;
 use MondayFactory\DatabaseModelGenerator\Generator\LowLevelDatabaseStorageGenerator;
+use MondayFactory\DatabaseModelGenerator\Generator\Printer;
 use Nette\IOException;
 use Nette\Neon\Neon;
 use Nette\Utils\FileSystem;
@@ -105,7 +106,7 @@ class GenerateBasicModel extends Command
 	/**
 	 * @throws \InvalidArgumentException
 	 */
-	protected function execute(InputInterface $input, OutputInterface $output): void
+	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
 		$this->input = $input;
 
@@ -148,7 +149,7 @@ class GenerateBasicModel extends Command
 		} catch (\Exception $e) {
 			$output->writeln($e->getMessage());
 
-			return;
+			return 1;
 		}
 
 		$whatGenerate = is_array($input->getArgument('whatGenerate'))
@@ -186,30 +187,34 @@ class GenerateBasicModel extends Command
 			}
 
 		} else {
-			$this->output->write("<fg=green>Done.</>");
+			$this->output->writeln("<fg=green>Done.</>");
 		}
+
+		return 0;
 	}
 
 	private function generateCollection(): void
 	{
 		$collectionGenerator = new CollectionGenerator($this->definition, $this->getNeonName());
+		$printer = new Printer();
 
-		$this->processOutput($collectionGenerator->getContent(), $collectionGenerator->getFileNamespace());
+		$this->processOutput($printer->printFile($collectionGenerator->file), $collectionGenerator->getFileNamespace());
 	}
 
 	private function generateData(): void
 	{
 		$dataGenerator = new DataGenerator($this->definition, $this->getNeonName());
+		$printer = new Printer();
 
-
-		$this->processOutput($dataGenerator->getContent(), $dataGenerator->getFileNamespace());
+		$this->processOutput($printer->printFile($dataGenerator->file), $dataGenerator->getFileNamespace());
 	}
 
 	private function generateLlstorage(): void
 	{
 		$lowLevelDatabaseStorage = new LowLevelDatabaseStorageGenerator($this->definition, $this->getNeonName());
+		$printer = new Printer();
 
-		$this->processOutput($lowLevelDatabaseStorage->getContent(), $lowLevelDatabaseStorage->getFileNamespace());
+		$this->processOutput($printer->printFile($lowLevelDatabaseStorage->file), $lowLevelDatabaseStorage->getFileNamespace());
 	}
 
 	private function processOutput(string $output, string $filePath): void

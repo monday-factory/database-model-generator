@@ -13,14 +13,20 @@ class LowLevelDatabaseStorageGenerator
 
 	use TBaseMethods;
 
+	/**
+	 * @var PhpFile
+	 */
+	public $file;
+
 	public function __construct(array $definition, string $name)
 	{
 		$this->definition = $definition;
 		$this->name = $name;
-		$this->content = $this->generate();
+		$this->file = $this->generate();
+		$this->content = (string) $this->file;
 	}
 
-	private function generate(): string
+	private function generate(): PhpFile
 	{
 		$file = new PhpFile();
 		$file->setStrictTypes();
@@ -54,7 +60,7 @@ class LowLevelDatabaseStorageGenerator
 			->setVisibility('protected')
 			->addComment("\n@var string");
 
-		return (string) $file;
+		return $file;
 	}
 
 }
