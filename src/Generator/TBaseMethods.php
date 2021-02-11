@@ -9,44 +9,30 @@ use Nette\Utils\Strings;
 trait TBaseMethods
 {
 
-	/**
-	 * @var array
-	 */
-	private $definition;
+	/** @var array<scalar, mixed> */
+	private array $definition;
 
-	/**
-	 * @var string
-	 */
-	private $name;
+	private string $name;
 
-	/**
-	 * @var string
-	 */
-	private $content;
+	private string $content;
 
-	/**
-	 * @var string
-	 */
-	private $fileNamespace;
+	private string $fileNamespace;
 
+    public function getFileNamespace(): string
+    {
+        return $this->fileNamespace;
+    }
+
+    public function getContent(): string
+    {
+        return $this->content;
+    }
 
 	private function toCamelCase(string $string): string
 	{
 		$result = preg_replace('/[-\_]/', '', Strings::firstLower(Strings::capitalize($string)));
 
-		return !is_null($result)
-			? $result
-			: '';
-	}
-
-	public function getFileNamespace(): string
-	{
-		return $this->fileNamespace;
-	}
-
-	public function getContent(): string
-	{
-		return $this->content;
+		return $result ?? '';
 	}
 
 	private function getClassName(): string

@@ -1,2 +1,9 @@
 includes:
 	- vendor/monday-factory/php-code-checker/phpstan.neon
+
+parameters:
+	checkGenericClassInNonGenericObjectType: false
+	ignoreErrors:
+		- '/Parameter #1 \$argument of class ReflectionClass constructor expects class-string<T of object>\|T of object, string given\./'
+	excludes_analyse:
+		- ./src/Command/SideBySide.php

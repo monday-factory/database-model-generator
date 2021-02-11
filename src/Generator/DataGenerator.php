@@ -9,33 +9,23 @@ use Nette\PhpGenerator\ClassType;
 use Nette\PhpGenerator\PhpFile;
 use Nette\PhpGenerator\PhpLiteral;
 use Nette\PhpGenerator\PhpNamespace;
-use Nette\PhpGenerator\PsrPrinter;
+use ReflectionClass;
 
 class DataGenerator
 {
 
 	use TBaseMethods;
 
-	/**
-	 * @var PhpNamespace
-	 */
-	private $namespace;
+	public PhpFile $file;
+	private PhpNamespace $namespace;
+	private ClassType $class;
 
-	/**
-	 * @var ClassType
-	 */
-	private $class;
-
-	/**
-	 * @var PhpFile
-	 */
-	public $file;
-
+	/** @param array<scalar, mixed> $definition */
 	public function __construct(array $definition, string $name)
 	{
 		$this->definition = $definition;
 		$this->name = $name;
-		$this->content = $this->generate();
+		$this->content = (string) $this->generate();
 	}
 
 	private function generate(): PhpFile
@@ -92,49 +82,38 @@ class DataGenerator
 				$nullable = $this->isPropertyNullable($property);
 
 				$param = $constructor->addParameter($this->toCamelCase($name))
-					->setTypeHint($property['type'])
+					->setType($property['type'])
 					->setNullable($nullable);
+
+				$this->addUse($property['type']);
 
 				if (isset($property['default'])) {
 					$param->setDefaultValue($property['default']);
 				}
 
-				$constructor->addComment('@var '
-					. ($nullable ? 'null|' : '')
-					. $this->getTypehint($property['type'])
-					. ' $'
-					. $this->toCamelCase($name)
-				);
-
 				$constructor->addBody('$this->? = ?;', [
 					$this->toCamelCase($name),
 					new PhpLiteral('$' . $this->toCamelCase($name)),
 				]);
-
 			}
 		}
 	}
 
-	/**
-	 * @param array $property
-	 *
-	 * @return bool
-	 */
-	private function isPropertyNullable(array $property)
+	/** @param array<scalar, mixed> $property */
+	private function isPropertyNullable(array $property): bool
 	{
-		return isset($property['nullable']) && boolval($property['nullable']) === true;
+		return isset($property['nullable']) && (bool) $property['nullable'] === true;
 	}
 
 	private function addFromDataMethod(): void
 	{
 		$fromData = $this->class->addMethod('fromData')
 			->setStatic()
-			->setReturnType(IDatabaseData::class)
-			->addComment('@var iterable $data')
-			->addComment("\n@return " . (new \ReflectionClass(IDatabaseData::class))->getShortName());
+			->setComment('@param array<int|string, mixed> $data')
+			->setReturnType('self');
 
 		$fromData->addParameter('data')
-			->setTypeHint('array');
+			->setType('array');
 
 		$rwProperties = $this->definition['databaseCols']['rw'] ?? [];
 		$selfBody = '';
@@ -142,7 +121,9 @@ class DataGenerator
 		foreach (array_keys($rwProperties) as $name) {
 			$selfBody .= "\t\$data['" . $this->toCamelCase((string) $name) . '\']';
 
-			next($rwProperties) === false ?: $selfBody .= ",\n";
+			if ((bool) next($rwProperties) !== false) {
+				$selfBody .= ",\n";
+			}
 		}
 
 		$fromData->addBody("return new self(\n\t?\n);", [new PhpLiteral($selfBody)]);
@@ -152,13 +133,11 @@ class DataGenerator
 	{
 		$fromRow = $this->class->addMethod('fromRow')
 			->setStatic()
-			->setReturnType(IDatabaseData::class)
-			->addComment('@todo Finish implementation.')
-			->addComment("\n@var array \$row")
-			->addComment("\n@return " . (new \ReflectionClass(IDatabaseData::class))->getShortName());
+			->setComment('@param array<int|string, mixed> $row')
+			->setReturnType('self');
 
 		$fromRow->addParameter('row')
-			->setTypeHint('array');
+			->setType('array');
 
 		if (isset($this->definition['databaseCols']['ro']) && count($this->definition['databaseCols']['ro']) > 0) {
 			$fromRow->addBody('$instance = new self(');
@@ -177,9 +156,12 @@ class DataGenerator
 			$fromRowTypecastingPrefix = '';
 
 			if (isset($property['fromString'])) {
-
 				$classTest = [];
-				preg_match('/(?<construct>new +)?(?<class>[\\\\0-9a-zA-Z]+)(?<method>[::a-zA-Z0-9()?]+)/m', $property['fromString'], $classTest);
+				preg_match(
+					'/(?<construct>new +)?(?<class>[\\\\0-9a-zA-Z]+)(?<method>[::a-zA-Z0-9()?]+)/m',
+					$property['fromString'],
+					$classTest,
+				);
 
 				if (isset($classTest['class']) && class_exists($classTest['class'])) {
 					$usedAlias = null;
@@ -191,24 +173,19 @@ class DataGenerator
 						str_replace('?', '$row[\'' . $name . '\']', $classTest['method']) .
 						$delimiter;
 				} else {
-				$fromRowBody =
-					str_replace('?', '$row[\'' . $name . '\']', $this->prepareFromStringArgument($property['fromString']))
-					. $delimiter;
+					$fromRowBody =
+						str_replace(
+							'?',
+							'$row[\'' . $name . '\']',
+							$this->prepareFromStringArgument($property['fromString']),
+						)
+						. $delimiter;
 				}
-
 			} else {
 				$fromRowBody = "\$row['" . $name . '\']' . $delimiter;
 			}
 
-			if (
-				in_array($property['type'], [
-					'bool',
-					'int',
-					'double',
-					'string',
-				])
-			)
-			{
+			if (in_array($property['type'], ['bool', 'int', 'double', 'string'], true)) {
 				$fromRowTypecastingPrefix = "(" . $property['type'] . ") ";
 			}
 
@@ -224,20 +201,23 @@ class DataGenerator
 			$roProperties = $this->definition['databaseCols']['ro'];
 
 			foreach ($roProperties as $name => $property) {
-//				$delimiter = next($roProperties) !== false
-//					? ""
-//					: ";";
 				$delimiter = ';';
 
 				$pastedProperty = isset($property['fromString'])
-					? str_replace('?', '$row[\'' . $name . '\']', $this->prepareFromStringArgument($property['fromString']))
+					? str_replace(
+						'?',
+						'$row[\'' . $name . '\']',
+						$this->prepareFromStringArgument($property['fromString']),
+					)
 					: '$row[\'' . $name . '\']';
 
 				if (isset($property['nullable']) && boolval($property['nullable'])) {
 					$pastedProperty .= ' ?? null';
 				}
 
-				$fromRow->addBody('$instance->set' . ucfirst($this->toCamelCase((string) $name)) . "({$pastedProperty})" . $delimiter);
+				$fromRow->addBody(
+					'$instance->set' . ucfirst($this->toCamelCase((string) $name)) . "({$pastedProperty})" . $delimiter,
+				);
 			}
 
 			$fromRow->addBody("\n" . 'return $instance;');
@@ -252,7 +232,7 @@ class DataGenerator
 
 		if (count($expandedFromString) === 2) {
 			$this->namespace->addUse($expandedFromString[0]);
-			$classReflection = new \ReflectionClass($expandedFromString[0]);
+			$classReflection = new ReflectionClass($expandedFromString[0]);
 
 			return $classReflection->getShortName() . '::' . $expandedFromString[1];
 		}
@@ -263,7 +243,7 @@ class DataGenerator
 			/**
 			 * Check if the class exists
 			 */
-			new \ReflectionClass($className);
+			new ReflectionClass($className);
 
 			return 'new ' . $parameter;
 		}
@@ -275,16 +255,15 @@ class DataGenerator
 	{
 		$this->class->addMethod('toArray')
 			->setReturnType('array')
-			->setBody('return get_object_vars($this);')
-			->addComment('@return array');
+			->setComment('@return array<int|string, mixed>')
+			->setBody('return get_object_vars($this);');
 	}
 
 	private function addToDatabaseArrayMethod(): void
 	{
 		$toArray = $this->class->addMethod('toDatabaseArray')
-			->setReturnType('array')
-			->addComment('@todo Finish implementation.')
-			->addComment("\n@return array");
+			->setComment('@return array<int|string, mixed>')
+			->setReturnType('array');
 
 		$body = "return [\n";
 
@@ -302,7 +281,7 @@ class DataGenerator
 					$body .= ' is_null($this->' . $this->toCamelCase((string) $name) . ') ? null :';
 				}
 
-				$body .= ' $this->' . $this->toCamelCase((string) $name)  . $toString .  ",\n";
+				$body .= ' $this->' . $this->toCamelCase((string) $name) . $toString . ",\n";
 			}
 		}
 
@@ -316,21 +295,18 @@ class DataGenerator
 		return '->' . str_replace('->', '', $argument);
 	}
 
+	/** @param array<scalar, mixed> $propertyDefinition */
 	private function addGetter(string $name, array $propertyDefinition): void
 	{
-		$getter = $this->class->addMethod('get' . ucfirst($this->toCamelCase($name)))
+		$this->class->addMethod('get' . ucfirst($this->toCamelCase($name)))
 			->setReturnType($propertyDefinition['type'])
 			->setReturnNullable($this->isPropertyNullable($propertyDefinition))
 			->addBody('return $this->?;', [$this->toCamelCase($name)]);
 
-		$getter->addComment(
-			'@return '
-			. ($this->isPropertyNullable($propertyDefinition) ? 'null|' : '')
-			. $this->getTypehint($propertyDefinition['type']
-			)
-		);
+		$this->addUse($propertyDefinition['type']);
 	}
 
+	/** @param array<scalar, mixed> $propertyDefinition */
 	private function addSetter(string $name, array $propertyDefinition): void
 	{
 		$setter = $this->class->addMethod('set' . ucfirst($this->toCamelCase($name)))
@@ -341,38 +317,28 @@ class DataGenerator
 
 		$setter->addParameter($this->toCamelCase($name))
 			->setNullable($this->isPropertyNullable($propertyDefinition))
-			->setTypeHint($propertyDefinition['type']);
+			->setType($propertyDefinition['type']);
 
-		$setter->addComment(
-			'@var '
-			. ($this->isPropertyNullable($propertyDefinition) ? 'null|' : '')
-			. $this->getTypehint($propertyDefinition['type']
-			)
-		);
+		$this->addUse($propertyDefinition['type']);
 	}
 
+	/** @param array<scalar, mixed> $propertyDefinition */
 	private function addProperty(string $name, array $propertyDefinition): void
 	{
 		$this->class->addProperty($this->toCamelCase($name))
 			->setVisibility('private')
-			->addComment(
-				"\n@var "
-				. ($this->isPropertyNullable($propertyDefinition) ? 'null|' : '')
-				. $this->getTypehint($propertyDefinition['type']
-				)
-			);
+			->setType($propertyDefinition['type'])
+			->setNullable($this->isPropertyNullable($propertyDefinition));
+
+		$this->addUse($propertyDefinition['type']);
 	}
 
-	private function getTypehint(string $type): string
+	private function addUse(string $type): void
 	{
 		if (substr_count($type, '\\') > 0) {
-			$classReflection = new \ReflectionClass($type);
+			$classReflection = new ReflectionClass($type);
 			$this->namespace->addUse($classReflection->getName());
-
-			return $classReflection->getShortName();
 		}
-
-		return $type;
 	}
 
 }

@@ -30,25 +30,25 @@
 		}
 	},
 	"require": {
-		"php": "^7.2",
-		"nette/utils": "^3.0",
-		"tracy/tracy": "^2.6",
-		"nette/php-generator": "^3.3",
-		"contributte/console": "^0.8",
+		"php": ">=7.4",
+		"nette/utils": "^3.1",
 		"dibi/dibi": "^4.0",
-		"monday-factory/database-model": "dev-nette-3"
+		"tracy/tracy": "^2.8",
+		"nette/php-generator": "^3.5",
+		"contributte/console": "^0.8",
+		"monday-factory/database-model": "dev-beta",
+		"nette/bootstrap": "^3.1"
 	},
 	"require-dev": {
-		"phpstan/phpstan": "^0.10.5",
-		"phpstan/phpstan-strict-rules": "^0.10",
-		"slevomat/coding-standard": "^4.0",
-		"monday-factory/php-code-checker": "^1.0"
+		"phpstan/phpstan": "^0.12",
+		"phpstan/phpstan-strict-rules": "^0.12",
+		"monday-factory/php-code-checker": "dev-beta"
 	},
 	"bin": ["src/bin/database-model-generator"],
 	"scripts": {
 		"app:phpstan": "vendor/bin/phpstan analyse src -c phpstan.neon --level 7",
-		"app:phpcs": "vendor/bin/phpcs --standard=vendor/monday-factory/php-code-checker/ruleset.xml --extensions=php,phpt --tab-width=4 --ignore=temp -sp src",
-		"app:phpcbf": "vendor/bin/phpcbf --report=diff --standard=vendor/monday-factory/php-code-checker/ruleset.xml --extensions=php,phpt --tab-width=4 --ignore=temp -p src",
+		"app:phpcs": "vendor/bin/phpcs --standard=ruleset.xml --extensions=php,phpt --tab-width=4 --ignore=temp -sp src",
+		"app:phpcsfix": "vendor/bin/phpcbf --report=diff --standard=ruleset.xml --extensions=php,phpt --tab-width=4 --ignore=temp -p src",
 		"app:all": [
 			"@app:phpstan",
 			"@app:phpcs"

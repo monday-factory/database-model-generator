@@ -1,5 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
+namespace MondayFactory\DatabaseModelGenerator\Command;
+
+use Exception;
+
+// phpcs:disable
 class SideBySide {
     const AFFIXES_CLI = array("\e[1m\e[101m\e[97m", "\e[0m", "\e[1m\e[42m\e[97m", "\e[0m");
     const AFFIXES_HTML = array('<del>', '</del>', '<ins>', '</ins>');
@@ -37,7 +44,7 @@ class SideBySide {
             throw new Exception('Affixes should be an array with four entries');
         }
         foreach ($affixes as $affix) {
-            if (gettype($affix) !== 'string') {
+            if (!is_string($affix)) {
                 throw new Exception('All entries of affixes must be strings');
             }
         }
@@ -266,7 +273,7 @@ class SideBySide {
      * @param int $prefix
      * @param int $suffix
      */
-    private function computeMaps(&$source, &$target, &$sourceMap, &$targetMap, $prefix, $suffix) {
+    private function computeMaps(&$source, &$target, &$sourceMap, &$targetMap, int $prefix, $suffix) {
         $sourceFrom = $targetFrom = $prefix;
         $sourceTo = count($source) - $suffix;
         $targetTo = count($target) - $suffix;
@@ -289,13 +296,11 @@ class SideBySide {
     }
 
     /**
-     * @param string $source
-     * @param string $target
-     * @throws Exception
-     * @return string[]
+     * @return array<string>
      */
-    public function compute($source, $target) {
-        if (gettype($source) !== 'string' || gettype($target) !== 'string') {
+    public function compute(string $source, string $target): array
+	{
+        if (!is_string($source) || !is_string($target)) {
             throw new Exception('Source and target must be strings');
         }
 
@@ -305,7 +310,7 @@ class SideBySide {
         $targetChars = self::split($target);
         $targetMap = array_fill(0, count($targetChars), false);
 
-        list($prefixLength, $suffixLength) = self::getCommonAffixLengths($sourceChars, $targetChars);
+        [$prefixLength, $suffixLength] = self::getCommonAffixLengths($sourceChars, $targetChars);
         $this->computeMaps($sourceChars, $targetChars, $sourceMap, $targetMap, $prefixLength, $suffixLength);
 
         return array(

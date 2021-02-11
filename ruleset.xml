@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<ruleset name="Monday Factory">
+    <description>Monday Factory coding standards</description>
+    <rule ref="./vendor/monday-factory/php-code-checker/ruleset.xml"/>
+    <rule ref="SlevomatCodingStandard.Files.TypeNameMatchesFileName">
+        <properties>
+            <property name="rootNamespaces" type="array">
+                <element key="src" value="MondayFactory\DatabaseModelGenerator"/>
+            </property>
+        </properties>
+    </rule>
+</ruleset>
