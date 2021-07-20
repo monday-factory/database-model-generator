@@ -30,13 +30,12 @@
 		}
 	},
 	"require": {
-		"php": "^7.2",
+		"php": "^8.0",
 		"nette/utils": "^3.0",
-		"tracy/tracy": "^2.6",
-		"nette/php-generator": "^3.3",
-		"contributte/console": "^0.8",
+		"nette/php-generator": "^3.5",
+		"contributte/console": "^0.9",
 		"dibi/dibi": "^4.0",
-		"monday-factory/database-model": "dev-nette-3"
+		"monday-factory/database-model": "dev-php8"
 	},
 	"require-dev": {
 		"phpstan/phpstan": "^0.10.5",
