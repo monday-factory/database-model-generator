@@ -4,35 +4,34 @@ declare(strict_types=1);
 
 namespace MondayFactory\DatabaseModelGenerator\Command;
 
-use MondayFactory\DatabaseModelGenerator\Generator\CollectionGenerator;
-use MondayFactory\DatabaseModelGenerator\Generator\DataGenerator;
-use MondayFactory\DatabaseModelGenerator\Generator\LowLevelDatabaseStorageGenerator;
+use MondayFactory\DatabaseModelGenerator\Definition\PhinxDefinitionFactory;
+use MondayFactory\DatabaseModelGenerator\Definition\Table;
+use MondayFactory\DatabaseModelGenerator\Generator\NewCollectionGenerator;
+use MondayFactory\DatabaseModelGenerator\Generator\NewDataGenerator;
+use MondayFactory\DatabaseModelGenerator\Generator\NewLowLevelDatabaseStorageGenerator;
 use MondayFactory\DatabaseModelGenerator\Generator\Printer;
 use Nette\IOException;
-use Nette\Neon\Neon;
 use Nette\Utils\FileSystem;
+use Nette\Utils\Strings;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class GenerateBasicModel extends Command
+class FromPhinx extends Command
 {
 
-	public const COMMAND_NAME = 'basic-model';
+	public const COMMAND_NAME = 'phinx-model';
 
-	protected static $defaultName = 'basic-model';
+	protected static $defaultName = 'phinx-model';
 
-	/**
-	 * @var array
-	 */
-	private $definition;
+	private Table $definition;
 
 	/**
 	 * @var string
 	 */
-	private $neonName;
+	private $tableName;
 
 	/**
 	 * @var array
@@ -60,11 +59,6 @@ class GenerateBasicModel extends Command
 	private $output;
 
 	/**
-	 * @var string
-	 */
-	private $projectFilesPath;
-
-	/**
 	 * @var InputInterface
 	 */
 	private $input;
@@ -74,20 +68,20 @@ class GenerateBasicModel extends Command
 	 */
 	private $errors = [];
 
+	private array $schema;
 
-	public function __construct(private string $definitionDir = '', private string $ignoredNamespace = '', string $projectFilesPath = '')
+
+	public function __construct(private string $namespacePath, private string $phinxSchemaPath = '', private string $ignoredNamespace = '', private string $projectFilesPath = '')
 	{
 		parent::__construct();
-
-		$this->projectFilesPath = $projectFilesPath;
 	}
 
 	protected function configure(): void
 	{
 		$this->setName(self::COMMAND_NAME);
-		$this->setDescription('Generates basic MondayFactory Model files from definition.');
+		$this->setDescription('Generates basic MondayFactory Model files from Phinx schema.');
 
-		$this->addArgument('neonName', InputArgument::REQUIRED, 'Name of the neon with definition.');
+		$this->addArgument('tableName', InputArgument::OPTIONAL, 'Name of the neon with definition.');
 		$this->addArgument(
 			'projectFilesPath',
 			InputArgument::OPTIONAL,
@@ -99,7 +93,7 @@ class GenerateBasicModel extends Command
 			'What You need to generate? You can add more types as list separated by space. 
 				For all leave argument blank. Allowed values: 
 				[' . join(', ', $this->generators) . ']' , ['collection', 'data', 'llstorage']);
-		$this->addOption('def-dir', null, strlen($this->definitionDir) === 0 ? InputOption::VALUE_REQUIRED : InputOption::VALUE_OPTIONAL, '', getcwd() . '/modelDefinition');
+		$this->addOption('schema-path', null, strlen($this->phinxSchemaPath) === 0 ? InputOption::VALUE_REQUIRED : InputOption::VALUE_OPTIONAL, '', getcwd() . '/db/schema.php');
 		$this->addOption('ignored-namespace', 'I', strlen($this->ignoredNamespace) === 0 ? InputOption::VALUE_REQUIRED : InputOption::VALUE_OPTIONAL, '', null);
 		$this->addOption('p', 'p', InputOption::VALUE_NONE, 'Print generated files to stdout');
 		$this->addOption('dry-run', null, InputOption::VALUE_NONE);
@@ -112,15 +106,13 @@ class GenerateBasicModel extends Command
 	protected function execute(InputInterface $input, OutputInterface $output): int
 	{
 		$this->input = $input;
-		if ($this->input->getOption('def-dir')) {
-			$this->definitionDir = $this->input->getOption('def-dir');
+		if ($this->input->getOption('schema-path')) {
+			$this->phinxSchemaPath = $this->input->getOption('schema-path');
 		}
 
 		if ($this->input->getOption('ignored-namespace')) {
 			$this->ignoredNamespace = $this->input->getOption('ignored-namespace');
 		}
-
-		var_dump($input->getArgument('projectFilesPath'));
 
 		if (is_string($input->getArgument('projectFilesPath')) && $input->getArgument('projectFilesPath') !== '-') {
 			$this->projectFilesPath = $input->getArgument('projectFilesPath');
@@ -146,29 +138,24 @@ class GenerateBasicModel extends Command
 		}
 
 		try {
-			if (! is_string($input->getArgument('neonName'))) {
-				throw new \InvalidArgumentException('Neon name must be string.');
-			}
-
-			$this->neonName = $input->getArgument('neonName');
-			$neon = $this->resolveNeonPath();
-			$neonContent = file_get_contents($neon);
-
-			if ($neonContent === false) {
-				throw new \UnexpectedValueException('Neon file can not be read.');
-			}
-
-			$this->definition = Neon::decode($neonContent);
-
+			$this->tableName = $input->getArgument('tableName');
 		} catch (\Exception $e) {
 			$output->writeln($e->getMessage());
 
 			return 1;
 		}
 
+		$this->schema = require($this->phinxSchemaPath);
+
+		if (! $this->basicSchemeValidation()) {
+			throw new \InvalidArgumentException('Invalid Phinx schema.');
+		}
+
 		$whatGenerate = is_array($input->getArgument('whatGenerate'))
 			? $input->getArgument('whatGenerate')
 			: $this->generators;
+
+		$definition = (new PhinxDefinitionFactory($this->schema))->create();
 
 		foreach ($whatGenerate as $generator) {
 			if (! in_array($generator, $this->generators, true)) {
@@ -177,20 +164,28 @@ class GenerateBasicModel extends Command
 				continue;
 			}
 
-			switch ($generator) {
-				case 'collection':
-					$this->generateCollection();
+			if (is_string($this->tableName) && strlen($this->tableName)) {
+				if (! array_key_exists($this->tableName, $this->schema['tables'])) {
+					throw new \InvalidArgumentException(sprintf('Table with name %s does not exists in provided schema %s', $this->tableName, $this->phinxSchemaPath));
+				}
 
-					break;
-				case 'data':
-					$this->generateData();
+				$this->definition = $definition->getTable($this->tableName);
 
-					break;
-				case 'llstorage':
-					$this->generateLlstorage();
+				$this->output->writeln(sprintf('GENERATE %s for table %s',$generator, $this->tableName));
+				$this->generate($generator);
 
-					break;
+			} else if (is_null($this->tableName)) {
+				/**
+				 * @var Table $table
+				 */
+				foreach ($definition as $table) {
+					$this->definition = $table;
+
+					$this->output->writeln(sprintf('GENERATE %s for table %s ',$generator, $table->getName()));
+					$this->generate($generator);
+				}
 			}
+
 		}
 
 		if (count($this->errors)) {
@@ -207,23 +202,48 @@ class GenerateBasicModel extends Command
 		return 0;
 	}
 
+	private function generate(string $generator)
+	{
+		switch ($generator) {
+			case 'collection':
+				$this->generateCollection();
+
+				break;
+			case 'data':
+				$this->generateData();
+
+				break;
+			case 'llstorage':
+				$this->generateLlstorage();
+
+				break;
+		}
+	}
+
+	private function basicSchemeValidation()
+	{
+		$schema = $this->schema['tables'] ?? false;
+
+		return is_array($schema);
+	}
+
 	private function generateCollection(): void
 	{
-		$collectionGenerator = new CollectionGenerator($this->definition, $this->getNeonName());
+		$collectionGenerator = new NewCollectionGenerator($this->definition, $this->getNamespace($this->definition->getName()));
 
 		$this->processOutput($collectionGenerator->getContent(), $collectionGenerator->getFileNamespace());
 	}
 
 	private function generateData(): void
 	{
-		$dataGenerator = new DataGenerator($this->definition, $this->getNeonName());
+		$dataGenerator = new NewDataGenerator($this->definition, $this->getNamespace($this->definition->getName()));
 
 		$this->processOutput($dataGenerator->getContent(), $dataGenerator->getFileNamespace());
 	}
 
 	private function generateLlstorage(): void
 	{
-		$lowLevelDatabaseStorage = new LowLevelDatabaseStorageGenerator($this->definition, $this->getNeonName());
+		$lowLevelDatabaseStorage = new NewLowLevelDatabaseStorageGenerator($this->definition, $this->getNamespace($this->definition->getName()));
 
 		$this->processOutput($lowLevelDatabaseStorage->getContent(), $lowLevelDatabaseStorage->getFileNamespace());
 	}
@@ -245,12 +265,10 @@ class GenerateBasicModel extends Command
 		$projectFilesPath = '';
 
 		if (strlen($this->projectFilesPath) > 0) {
-			$projectFilesPath = str_starts_with($this->projectFilesPath, '/')
+			$projectFilesPath = substr($this->projectFilesPath, 0, 1) === '/'
 				? realpath($this->projectFilesPath)
 				: realpath(getcwd() . '/' . $this->projectFilesPath);
 
-			if (strlen($this->projectFilesPath) > 1 && $projectFilesPath === false) {
-			}
 		} else {
 			$cwd = getcwd();
 			$projectFilesPath = $cwd !== false
@@ -326,27 +344,17 @@ class GenerateBasicModel extends Command
 		}
 	}
 
-	private function resolveNeonPath(): string
+	private function getNamespace(string $tableName): string
 	{
-		$filePath = realpath($this->definitionDir . '/' . $this->getNeonName() . '.neon');
-
-		if ($filePath !== false && file_exists($filePath))
-		{
-			return $filePath;
-		}
-
-		throw new \InvalidArgumentException("File {$this->definitionDir}/{$this->getNeonName()}.neon not found.");
+		return $this->namespacePath . $this->toPascalCase($tableName);
 	}
 
-	private function getNeonName(): string
+	private function toPascalCase(string $string): string
 	{
-		$result = preg_replace('/.neon/', '', $this->neonName);
+		$result = preg_replace('/[-\_]/', '', Strings::firstUpper(Strings::capitalize($string)));
 
-		if (is_null($result)) {
-			throw new \Exception('Some error occured.');
-		}
-
-		return $result;
+		return !is_null($result)
+			? $result
+			: '';
 	}
-
 }

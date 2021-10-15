@@ -34,7 +34,6 @@
 		"nette/utils": "^3.0",
 		"nette/php-generator": "^3.5",
 		"contributte/console": "^0.9",
-		"dibi/dibi": "^4.0",
 		"monday-factory/database-model": "dev-php8"
 	},
 	"require-dev": {

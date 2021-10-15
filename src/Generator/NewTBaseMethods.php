@@ -7,7 +7,7 @@ namespace MondayFactory\DatabaseModelGenerator\Generator;
 use Nette\PhpGenerator\PhpFile;
 use Nette\Utils\Strings;
 
-trait TBaseMethods
+trait NewTBaseMethods
 {
 
 	/**
@@ -57,7 +57,7 @@ trait TBaseMethods
 
 	private function getNamespace(string $concreteNamespace): string
 	{
-		return $this->definition['namespace'] . '\\' . $concreteNamespace;
+		return $this->classNamespace . '\\' . $concreteNamespace;
 	}
 
 	private function getRowFactoryNamespace(): string
