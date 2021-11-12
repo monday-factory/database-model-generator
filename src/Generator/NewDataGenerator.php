@@ -85,7 +85,7 @@ class NewDataGenerator
 				}
 
 				$param = $constructor->addParameter($this->toCamelCase($property->getName()))
-					->setTypeHint($property->getType(true))
+					->setType($property->getType(true))
 					->setNullable($property->isNullable());
 
 				if ($property->getDefaultValue()) {
