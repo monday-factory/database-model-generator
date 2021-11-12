@@ -88,7 +88,7 @@ class NewDataGenerator
 					->setType($property->getType(true))
 					->setNullable($property->isNullable());
 
-				if ($property->getDefaultValue()) {
+				if ($property->getDefaultValue() && ! $property->getMapper() instanceof MapperObjectInterface) {
 					$param->setDefaultValue($property->getDefaultValue());
 				}
 
