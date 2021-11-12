@@ -154,8 +154,7 @@ class NewDataGenerator
 			$fromRowTypecastingPrefix = '';
 
 				if ($property->isClass()) {
-					$usedAlias = null;
-					$this->namespace->addUse($property->getMapper()->getClassName(), null, $usedAlias);
+					$this->namespace->addUse($property->getMapper()->getClassName());
 
 					$fromRowBody = $property->getMapper()->getFromStringLiteral('$row[\'' . $property->getName() . '\']') . $delimiter;
 				} else {
