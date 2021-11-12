@@ -23,7 +23,7 @@ class MethodTypesMapper implements MapperObjectInterface
 
 		if ($method->isStatic()) {
 
-			return $this->getClassName() . '::' . $method->getName() . '()';
+			return $this->reflectionClass->getShortName() . '::' . $method->getName() . '()';
 		} else {
 
 			return '->' . $method->getName() . '()';
@@ -36,7 +36,7 @@ class MethodTypesMapper implements MapperObjectInterface
 
 		if ($method->isStatic()) {
 
-			return $this->getClassName() . '::' . $method->getName() . '(' . $value . ')';
+			return $this->reflectionClass->getShortName() . '::' . $method->getName() . '(' . $value . ')';
 		} else {
 
 			return '->' . $method->getName() . '(\'' . $value . '\')';
