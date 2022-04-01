@@ -21,10 +21,10 @@ class PhinxDefinitionFactory
 		'mediumint' => 'int',
 		'int' => 'int',
 		'bigint' => 'int',
-		'float' => 'double',
-		'double' => 'double',
-		'real' => 'double',
-		'decimal' => 'double',
+		'float' => 'float',
+		'double' => 'float',
+		'real' => 'float',
+		'decimal' => 'float',
 
 		'bool' => 'bool',
 		'boolean' => 'bool',
@@ -38,7 +38,7 @@ class PhinxDefinitionFactory
 		'blob' => 'string',
 		'longblob' => 'string',
 
-		'json' => 'string',
+		'json' => 'json',
 		'enum' => 'string',
 		'set' => 'string',
 

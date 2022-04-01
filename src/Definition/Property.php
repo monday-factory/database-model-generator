@@ -43,6 +43,16 @@ class Property
 			return $returnInterfaceIfExists ? $this->mapper->getInterfaceName() : $this->mapper->getClassName();
 		}
 
+		switch ($this->type) {
+		    case 'json':
+		        return 'array';
+			default:
+				return $this->type;
+		}
+	}
+
+	public function getPureType(): string
+	{
 		return $this->type;
 	}
 
@@ -51,7 +61,7 @@ class Property
 		return $this->isNullable;
 	}
 
-	public function getDefaultValue(): ?string
+	public function getDefaultValue()
 	{
 		return $this->defaultValue;
 	}

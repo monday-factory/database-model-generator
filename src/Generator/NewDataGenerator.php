@@ -24,6 +24,15 @@ class NewDataGenerator
 
 	public PhpFile $file;
 
+	private array $scalarTypes = [
+		'bool',
+		'int',
+		'double',
+		'float',
+		'real',
+		'string',
+	];
+
 	public function __construct(private Table $tableDefinition, private string $classNamespace)
 	{
 		$this->definition = null;
@@ -89,7 +98,11 @@ class NewDataGenerator
 					->setNullable($property->isNullable());
 
 				if ($property->getDefaultValue() && ! $property->getMapper() instanceof MapperObjectInterface) {
-					$param->setDefaultValue($property->getDefaultValue());
+					$propertyDefaultValue = $property->getDefaultValue();
+					if (in_array($property->getType(), $this->scalarTypes)) {
+						$param->setDefaultValue(settype($propertyDefaultValue, $property->getType()));
+					}
+					$param->setDefaultValue($propertyDefaultValue);
 				}
 
 				$constructor->addBody('$this->? = ?;', [
@@ -161,12 +174,7 @@ class NewDataGenerator
 					$fromRowBody = "\$row['" . $property->getName() . '\']' . $delimiter;
 				}
 
-				if (in_array($property->getType(), [
-					'bool',
-					'int',
-					'double',
-					'string',
-				])) {
+				if (in_array($property->getType(), $this->scalarTypes)) {
 					$fromRowTypecastingPrefix = "(" . $property->getType() . ") ";
 				}
 
@@ -220,20 +228,19 @@ class NewDataGenerator
 		/**
 		 * @var Property $property
 		 */
-			foreach ($this->tableDefinition->getReadWriteProperties() as $property) {
+		foreach ($this->tableDefinition->getReadWriteProperties() as $property) {
+			$toString = $property->getMapper() instanceof MapperObjectInterface
+				? $property->getMapper()->getToStringLiteral()
+				: '';
 
-				$toString = $property->getMapper() instanceof MapperObjectInterface
-					? $property->getMapper()->getToStringLiteral()
-					: '';
+			$body .= "\t" . '\'' . $property->getName() . '\' =>';
 
-				$body .= "\t" . '\'' . $property->getName() . '\' =>';
-
-				if ($property->isNullable()) {
-					$body .= ' is_null($this->' . $this->toCamelCase((string) $property->getName()) . ') ? null :';
-				}
-
-				$body .= ' $this->' . $this->toCamelCase((string) $property->getName())  . $toString .  ",\n";
+			if ($property->isNullable()) {
+				$body .= ' is_null($this->' . $this->toCamelCase((string) $property->getName()) . ') ? null :';
 			}
+
+			$body .= $this->getToDatabaseArrayWrapper($property) . $toString .  ",\n";
+		}
 
 		$body .= '];';
 
@@ -251,7 +258,7 @@ class NewDataGenerator
 	private function addSetter(string $name, Property $propertyDefinition): void
 	{
 		$setter = $this->class->addMethod('set' . ucfirst($this->toCamelCase($name)))
-			->setVisibility('private')
+			->setVisibility(ClassType::VISIBILITY_PRIVATE)
 			->addBody("\$this->? = $?;\n", [$this->toCamelCase($propertyDefinition->getName()), $this->toCamelCase($propertyDefinition->getName())])
 			->addBody('return $this;')
 			->setReturnType('self');
@@ -268,7 +275,7 @@ class NewDataGenerator
 		}
 
 		$this->class->addProperty($this->toCamelCase($propertyDefinition->getName()))
-			->setVisibility('private')
+			->setVisibility(ClassType::VISIBILITY_PROTECTED)
 			->setNullable($propertyDefinition->isNullable())
 			->setType($propertyDefinition->getType(true));
 	}

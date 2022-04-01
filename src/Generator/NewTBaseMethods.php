@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MondayFactory\DatabaseModelGenerator\Generator;
 
+use MondayFactory\DatabaseModelGenerator\Definition\Property;
 use Nette\PhpGenerator\PhpFile;
 use Nette\Utils\Strings;
 
@@ -38,6 +39,16 @@ trait NewTBaseMethods
 		return !is_null($result)
 			? $result
 			: '';
+	}
+
+	private function getToDatabaseArrayWrapper(Property $property): string
+	{
+		switch ($property->getPureType()) {
+			case 'json':
+				return ' json_encode($this->' . $this->toCamelCase($property->getName()) . ')';
+			default:
+				return ' $this->' . $this->toCamelCase($property->getName());
+		}
 	}
 
 	public function getFileNamespace(): string
