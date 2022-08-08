@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace MondayFactory\DatabaseModelGenerator\Command;
 
+use MondayFactory\DatabaseModelGenerator\Definition\NeonDefinitionFactory;
 use MondayFactory\DatabaseModelGenerator\Generator\CollectionGenerator;
 use MondayFactory\DatabaseModelGenerator\Generator\DataGenerator;
 use MondayFactory\DatabaseModelGenerator\Generator\LowLevelDatabaseStorageGenerator;
+use MondayFactory\DatabaseModelGenerator\Generator\NewCollectionGenerator;
+use MondayFactory\DatabaseModelGenerator\Generator\NewDataGenerator;
+use MondayFactory\DatabaseModelGenerator\Generator\NewLowLevelDatabaseStorageGenerator;
 use MondayFactory\DatabaseModelGenerator\Generator\Printer;
 use Nette\IOException;
 use Nette\Neon\Neon;
 use Nette\Utils\FileSystem;
+use Nette\Utils\Strings;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -60,11 +65,6 @@ class GenerateBasicModel extends Command
 	private $output;
 
 	/**
-	 * @var string
-	 */
-	private $projectFilesPath;
-
-	/**
 	 * @var InputInterface
 	 */
 	private $input;
@@ -75,11 +75,9 @@ class GenerateBasicModel extends Command
 	private $errors = [];
 
 
-	public function __construct(private string $definitionDir = '', private string $ignoredNamespace = '', string $projectFilesPath = '')
+	public function __construct(private string $namespacePath, private string $definitionDir = '', private string $ignoredNamespace = '', private string $projectFilesPath = '')
 	{
 		parent::__construct();
-
-		$this->projectFilesPath = $projectFilesPath;
 	}
 
 	protected function configure(): void
@@ -92,7 +90,7 @@ class GenerateBasicModel extends Command
 			'projectFilesPath',
 			InputArgument::OPTIONAL,
 			'Path to the project files e.g. "app", or absolute "/data/app".',
-			getcwd() . '/app/model');
+			getcwd() . '/app/Model');
 		$this->addArgument(
 			'whatGenerate',
 			InputArgument::IS_ARRAY | InputArgument::OPTIONAL ,
@@ -119,8 +117,6 @@ class GenerateBasicModel extends Command
 		if ($this->input->getOption('ignored-namespace')) {
 			$this->ignoredNamespace = $this->input->getOption('ignored-namespace');
 		}
-
-		var_dump($input->getArgument('projectFilesPath'));
 
 		if (is_string($input->getArgument('projectFilesPath')) && $input->getArgument('projectFilesPath') !== '-') {
 			$this->projectFilesPath = $input->getArgument('projectFilesPath');
@@ -151,14 +147,9 @@ class GenerateBasicModel extends Command
 			}
 
 			$this->neonName = $input->getArgument('neonName');
-			$neon = $this->resolveNeonPath();
-			$neonContent = file_get_contents($neon);
 
-			if ($neonContent === false) {
-				throw new \UnexpectedValueException('Neon file can not be read.');
-			}
+			$this->definition = (new NeonDefinitionFactory($this->resolveNeonPath()))->create()->first();
 
-			$this->definition = Neon::decode($neonContent);
 
 		} catch (\Exception $e) {
 			$output->writeln($e->getMessage());
@@ -209,21 +200,21 @@ class GenerateBasicModel extends Command
 
 	private function generateCollection(): void
 	{
-		$collectionGenerator = new CollectionGenerator($this->definition, $this->getNeonName());
+		$collectionGenerator = new NewCollectionGenerator($this->definition, $this->getNamespace($this->definition->getName()));
 
 		$this->processOutput($collectionGenerator->getContent(), $collectionGenerator->getFileNamespace());
 	}
 
 	private function generateData(): void
 	{
-		$dataGenerator = new DataGenerator($this->definition, $this->getNeonName());
+		$dataGenerator = new NewDataGenerator($this->definition, $this->getNamespace($this->definition->getName()));
 
 		$this->processOutput($dataGenerator->getContent(), $dataGenerator->getFileNamespace());
 	}
 
 	private function generateLlstorage(): void
 	{
-		$lowLevelDatabaseStorage = new LowLevelDatabaseStorageGenerator($this->definition, $this->getNeonName());
+		$lowLevelDatabaseStorage = new NewLowLevelDatabaseStorageGenerator($this->definition, $this->getNamespace($this->definition->getName()));
 
 		$this->processOutput($lowLevelDatabaseStorage->getContent(), $lowLevelDatabaseStorage->getFileNamespace());
 	}
@@ -347,6 +338,20 @@ class GenerateBasicModel extends Command
 		}
 
 		return $result;
+	}
+
+	private function getNamespace(string $tableName): string
+	{
+		return $this->namespacePath . $this->toPascalCase($tableName);
+	}
+
+	private function toPascalCase(string $string): string
+	{
+		$result = preg_replace('/[-\_]/', '', Strings::firstUpper(Strings::capitalize($string)));
+
+		return !is_null($result)
+			? $result
+			: '';
 	}
 
 }
