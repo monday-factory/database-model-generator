@@ -47,7 +47,10 @@ class PhinxDefinitionFactory
 		'timestamp' => 'number',
 	];
 
-	public function __construct(array $definition)
+	public function __construct(
+		array $definition,
+		private ?array $meta = null,
+	)
 	{
 		if (array_key_exists('tables', $definition)) {
 			$definition = $definition['tables'];
@@ -64,6 +67,7 @@ class PhinxDefinitionFactory
 		}
 
 		$tableCollection = new TableCollection([]);
+		$meta = Meta::factory($this->meta);
 
 		foreach ($this->inputDef as $tableName => $tableDef) {
 			echo sprintf('Validating table %s.', $tableName) . PHP_EOL;
@@ -89,7 +93,11 @@ class PhinxDefinitionFactory
 					$tablePrimary = $columnName;
 				}
 
-				$propertyOptions = $this->getCommentPropertyOptions($columnDef['COLUMN_COMMENT']);
+				if ($this->meta) {
+					$propertyOptions = $meta->getTable($tableName)->getColumn($columnName);
+				} else {
+					$propertyOptions = $this->getCommentPropertyOptions($columnDef['COLUMN_COMMENT']);
+				}
 
 				$properties->add(
 					new Property(

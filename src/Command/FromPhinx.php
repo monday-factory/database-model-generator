@@ -11,6 +11,7 @@ use MondayFactory\DatabaseModelGenerator\Generator\NewDataGenerator;
 use MondayFactory\DatabaseModelGenerator\Generator\NewLowLevelDatabaseStorageGenerator;
 use MondayFactory\DatabaseModelGenerator\Generator\Printer;
 use Nette\IOException;
+use Nette\Neon\Neon;
 use Nette\Utils\FileSystem;
 use Nette\Utils\Strings;
 use Symfony\Component\Console\Command\Command;
@@ -71,7 +72,13 @@ class FromPhinx extends Command
 	private array $schema;
 
 
-	public function __construct(private string $namespacePath, private string $phinxSchemaPath = '', private string $ignoredNamespace = '', private string $projectFilesPath = '')
+	public function __construct(
+		private string $namespacePath,
+		private string $phinxSchemaPath = '',
+		private string $ignoredNamespace = '',
+		private string $projectFilesPath = '',
+		private ?string $metaPath = null,
+	)
 	{
 		parent::__construct();
 	}
@@ -90,10 +97,11 @@ class FromPhinx extends Command
 		$this->addArgument(
 			'whatGenerate',
 			InputArgument::IS_ARRAY | InputArgument::OPTIONAL ,
-			'What You need to generate? You can add more types as list separated by space. 
-				For all leave argument blank. Allowed values: 
+			'What You need to generate? You can add more types as list separated by space.
+				For all leave argument blank. Allowed values:
 				[' . join(', ', $this->generators) . ']' , ['collection', 'data', 'llstorage']);
 		$this->addOption('schema-path', null, strlen($this->phinxSchemaPath) === 0 ? InputOption::VALUE_REQUIRED : InputOption::VALUE_OPTIONAL, '', getcwd() . '/db/schema.php');
+		$this->addOption('meta-path', null, strlen($this->phinxSchemaPath) === 0 ? InputOption::VALUE_REQUIRED : InputOption::VALUE_OPTIONAL, '', getcwd() . '/db/schema.php');
 		$this->addOption('ignored-namespace', 'I', strlen($this->ignoredNamespace) === 0 ? InputOption::VALUE_REQUIRED : InputOption::VALUE_OPTIONAL, '', null);
 		$this->addOption('p', 'p', InputOption::VALUE_NONE, 'Print generated files to stdout');
 		$this->addOption('dry-run', null, InputOption::VALUE_NONE);
@@ -108,6 +116,10 @@ class FromPhinx extends Command
 		$this->input = $input;
 		if ($this->input->getOption('schema-path')) {
 			$this->phinxSchemaPath = $this->input->getOption('schema-path');
+		}
+
+		if ($this->input->getOption('meta-path')) {
+			$this->phinxSchemaPath = $this->input->getOption('meta-path');
 		}
 
 		if ($this->input->getOption('ignored-namespace')) {
@@ -147,6 +159,12 @@ class FromPhinx extends Command
 
 		$this->schema = require($this->phinxSchemaPath);
 
+		if (file_exists($this->metaPath)) {
+			$this->meta = Neon::decodeFile($this->metaPath);
+		} else {
+			$this->meta = null;
+		}
+
 		if (! $this->basicSchemeValidation()) {
 			throw new \InvalidArgumentException('Invalid Phinx schema.');
 		}
@@ -155,7 +173,7 @@ class FromPhinx extends Command
 			? $input->getArgument('whatGenerate')
 			: $this->generators;
 
-		$definition = (new PhinxDefinitionFactory($this->schema))->create();
+		$definition = (new PhinxDefinitionFactory($this->schema, $this->meta))->create();
 
 		foreach ($whatGenerate as $generator) {
 			if (! in_array($generator, $this->generators, true)) {
