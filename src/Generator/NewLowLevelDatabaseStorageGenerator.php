@@ -22,7 +22,7 @@ class NewLowLevelDatabaseStorageGenerator
 	public function __construct(private Table $tableDefinition, private string $classNamespace)
 	{
 		$this->definition = null;
-		$this->name = $this->toCamelCase($this->tableDefinition->getName());
+		$this->name = $this->convertToPascalCase($this->tableDefinition->getName());
 		$this->file = $this->generate();
 		$this->content = (string) $this->file;
 	}

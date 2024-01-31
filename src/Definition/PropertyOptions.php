@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace MondayFactory\DatabaseModelGenerator\Definition;
 
-enum PropertyOptions
+enum PropertyOptions: string
 {
-	case typeClass;
-	case readOnly;
+	case typeClass = "typeClass";
+	case readOnly = "readOnly";
 }

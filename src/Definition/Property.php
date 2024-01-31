@@ -81,4 +81,11 @@ class Property
 		return $this->mapper;
 	}
 
+	public function hasDefaultValue(): bool
+	{
+		return ($this->getDefaultValue() && ! $this->getMapper() instanceof MapperObjectInterface)
+		OR $this->getDefaultValue() === "0"
+		OR ($this->getDefaultValue() === null && $this->isNullable());
+	}
+
 }
