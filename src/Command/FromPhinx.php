@@ -159,7 +159,7 @@ class FromPhinx extends Command
 
 		$this->schema = require($this->phinxSchemaPath);
 
-		if (file_exists($this->metaPath)) {
+		if ($this->metaPath && file_exists($this->metaPath)) {
 			$this->meta = Neon::decodeFile($this->metaPath);
 		} else {
 			$this->meta = null;

@@ -7,23 +7,28 @@ namespace MondayFactory\DatabaseModelGenerator\Definition;
 class Meta extends \ArrayIterator
 {
 
-
-	public function __construct(array ...$metas)
+	public function __construct(array $metas)
 	{
 		parent::__construct($metas);
 	}
 
 	public static function factory(array $meta): self
 	{
+		$tablesMeta = [];
+
 		foreach ($meta as $tableName => $tableMeta) {
-			$meta[$tableName] = TableMeta::factory($tableName, $tableMeta);
+			$tablesMeta[$tableName] = TableMeta::factory($tableMeta ?? []);
 		}
 
-		return new self($meta);
+		return new self($tablesMeta);
 	}
 
-	public function getTable(string $name): TableMeta
+	public function getTable(string $name): ?TableMeta
 	{
-		return $this->offsetGet($name);
+		if ($this->offsetExists($name)) {
+			return $this->offsetGet($name);
+		}
+
+		return null;
 	}
 }

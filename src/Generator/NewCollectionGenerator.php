@@ -23,7 +23,7 @@ class NewCollectionGenerator
 	public function __construct(private Table $tableDefinition, private string $classNamespace)
 	{
 		$this->definition = null;
-		$this->name = $this->toCamelCase($this->tableDefinition->getName());
+		$this->name = $this->convertToPascalCase($this->tableDefinition->getName());
 		$this->file = $this->generate();
 		$this->content = (string) $this->file;
 	}
@@ -56,7 +56,7 @@ class NewCollectionGenerator
 		$methodCreate->addBody('return new static($data, ?, $idField);', [new PhpLiteral($this->getRowFactoryClassName() . '::class')])
 			->setVisibility('public')
 			->setStatic()
-			->setReturnType(IDatabaseDataCollection::class)
+			->setReturnType('self')
 			->addParameter('data')
 			->setTypeHint('iterable');
 

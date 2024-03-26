@@ -67,7 +67,9 @@ class PhinxDefinitionFactory
 		}
 
 		$tableCollection = new TableCollection([]);
-		$meta = Meta::factory($this->meta);
+		if ($this->meta) {
+			$meta = Meta::factory($this->meta);
+		}
 
 		foreach ($this->inputDef as $tableName => $tableDef) {
 			echo sprintf('Validating table %s.', $tableName) . PHP_EOL;
@@ -89,13 +91,15 @@ class PhinxDefinitionFactory
 			$tablePrimary = null;
 
 			foreach ($tableDef['columns'] as $columnName => $columnDef) {
+				$propertyOptions = null;
 				if ($columnDef['COLUMN_KEY'] === 'PRI') {
 					$tablePrimary = $columnName;
 				}
 
 				if ($this->meta) {
-					$propertyOptions = $meta->getTable($tableName)->getColumn($columnName);
-				} else {
+					$propertyOptions = $meta->getTable($tableName)?->getColumn($columnName);
+				}
+				if (! $propertyOptions) {
 					$propertyOptions = $this->getCommentPropertyOptions($columnDef['COLUMN_COMMENT']);
 				}
 
@@ -112,7 +116,8 @@ class PhinxDefinitionFactory
 				);
 			}
 
-			$tableCollection->add(new Table($tableName, $properties, $tablePrimary));
+
+			$tableCollection->add(new Table($tableName, $properties->sortRequired(), $tablePrimary));
 		}
 
 		return $this->tableCollection = $tableCollection;
