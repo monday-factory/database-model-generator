@@ -58,10 +58,10 @@ class NewCollectionGenerator
 			->setStatic()
 			->setReturnType('self')
 			->addParameter('data')
-			->setTypeHint('iterable');
+			->setType('iterable');
 
 		$methodCreate->addParameter('idField')
-			->setTypeHint('string')
+			->setType('string')
 			->setNullable()
 			->setDefaultValue(null);
 
