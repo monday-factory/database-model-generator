@@ -375,4 +375,9 @@ class FromPhinx extends Command
 			? $result
 			: '';
 	}
+
+	public static function getDefaultName(): string
+	{
+		return self::COMMAND_NAME;
+	}
 }

@@ -354,4 +354,9 @@ class GenerateBasicModel extends Command
 			: '';
 	}
 
+	public static function getDefaultName(): string
+	{
+		return self::COMMAND_NAME;
+	}
+
 }
