@@ -71,7 +71,6 @@ class FromPhinx extends Command
 
 	private array $schema;
 
-
 	public function __construct(
 		private string $namespacePath,
 		private string $phinxSchemaPath = '',
@@ -160,9 +159,9 @@ class FromPhinx extends Command
 		$this->schema = require($this->phinxSchemaPath);
 
 		if ($this->metaPath && file_exists($this->metaPath)) {
-			$this->meta = Neon::decodeFile($this->metaPath);
+			$meta = Neon::decodeFile($this->metaPath);
 		} else {
-			$this->meta = null;
+			$meta = null;
 		}
 
 		if (! $this->basicSchemeValidation()) {
@@ -173,7 +172,7 @@ class FromPhinx extends Command
 			? $input->getArgument('whatGenerate')
 			: $this->generators;
 
-		$definition = (new PhinxDefinitionFactory($this->schema, $this->meta))->create();
+		$definition = (new PhinxDefinitionFactory($this->schema, $meta))->create();
 
 		foreach ($whatGenerate as $generator) {
 			if (! in_array($generator, $this->generators, true)) {
