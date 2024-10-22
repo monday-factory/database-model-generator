@@ -369,11 +369,10 @@ class FromPhinx extends Command
 
 	private function toPascalCase(string $string): string
 	{
-		$result = preg_replace('/[-\_]/', '', Strings::firstUpper(Strings::capitalize($string)));
+		$string = str_replace(['-', '_'], ' ', $string);
+		$string = ucwords($string);
 
-		return !is_null($result)
-			? $result
-			: '';
+		return str_replace(' ', '', $string);
 	}
 
 	public static function getDefaultName(): string
