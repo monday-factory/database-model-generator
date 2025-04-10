@@ -45,7 +45,7 @@ class NewCollectionGenerator
 		$class->setExtends(BaseDatabaseDataCollection::class);
 
 		if ($this->tableDefinition->getTablePrimary()->isClass()) {
-			$idFieldSerializerProperty = $class->addProperty('idFieldSerializer')->setType('string');
+			$idFieldSerializerProperty = $class->addProperty('idFieldSerializer')->setType('?string');
 			$idFieldSerializer = $this->tableDefinition->getTablePrimary()->getMapper()->getToStringLiteral();
 
 			$idFieldSerializerProperty->setValue($idFieldSerializer)->setProtected();
